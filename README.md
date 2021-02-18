@@ -83,7 +83,29 @@ _To be written_
 
 ## Filters
 
-_To be written_
+### QueryFilters
+
+You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `emitter.Emitter` URI, where the value is a string in the format of:
+
+```
+{PATH}={REGULAR EXPRESSION}
+```
+
+Paths follow the dot notation syntax used by the [tidwall/gjson](https://github.com/tidwall/gjson) package and regular expressions are any valid [Go language regular expression](https://golang.org/pkg/regexp/). Successful path lookups will be treated as a list of candidates and each candidate's string value will be tested against the regular expression's [MatchString](https://golang.org/pkg/regexp/#Regexp.MatchString) method.
+
+For example:
+
+```
+repo://?include=properties.wof:placetype=region
+```
+
+You can pass multiple query parameters. For example:
+
+```
+repo://?include=properties.wof:placetype=region&include=properties.wof:name=(?i)new.*
+```
+
+The default query mode is to ensure that all queries match but you can also specify that only one or more queries need to match by appending a `include_mode` or `exclude_mode` parameter where the value is either "ANY" or "ALL".
 
 ## Tools
 

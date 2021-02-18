@@ -1,0 +1,17 @@
+# github.com/aaronland/go-json-query v0.0.2
+## explicit
+github.com/aaronland/go-json-query
+# github.com/aaronland/go-roster v0.0.2
+## explicit
+github.com/aaronland/go-roster
+# github.com/tidwall/gjson v1.6.0
+github.com/tidwall/gjson
+# github.com/tidwall/match v1.0.1
+github.com/tidwall/match
+# github.com/tidwall/pretty v1.0.0
+github.com/tidwall/pretty
+# github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
+## explicit
+github.com/whosonfirst/go-whosonfirst-crawl
+# github.com/whosonfirst/walk v0.0.1
+github.com/whosonfirst/walk

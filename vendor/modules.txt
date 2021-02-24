@@ -10,6 +10,9 @@ github.com/tidwall/gjson
 github.com/tidwall/match
 # github.com/tidwall/pretty v1.0.0
 github.com/tidwall/pretty
+# github.com/whosonfirst/go-ioutil v0.0.1
+## explicit
+github.com/whosonfirst/go-ioutil
 # github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
 ## explicit
 github.com/whosonfirst/go-whosonfirst-crawl

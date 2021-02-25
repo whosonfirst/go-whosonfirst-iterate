@@ -81,6 +81,15 @@ _To be written_
 
 ### repo://
 
+## Query parameters
+
+| Name | Value | Required | Notes
+| --- | --- | --- | --- |
+| _max_procs | Int | No | _To be written_ |
+| _exclude | String (a valid regular expression) | No | _To be written_ |
+| include | String | No | One or more query filters (described below) to limit documents that will be processed. |
+| exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
+
 ## Filters
 
 ### QueryFilters

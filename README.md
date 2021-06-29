@@ -15,7 +15,7 @@ import (
        "context"
        "flag"
        "github.com/whosonfirst/go-whosonfirst-iterate/emitter"       
-       "github.com/whosonfirst/go-whosonfirst-iterate/indexer"
+       "github.com/whosonfirst/go-whosonfirst-iterate/iterator"
        "io"
        "log"
 )
@@ -45,7 +45,11 @@ _Error handling removed for the sake of brevity._
 
 ## Concepts
 
+The naming conventions (`iterator` and `emitter`) are not ideal. They may still be changed.
+
 ### Iterators
+
+_To be written_
 
 ### Emitters
 

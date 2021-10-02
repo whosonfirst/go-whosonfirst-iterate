@@ -2,7 +2,7 @@ package publisher
 
 import (
 	"context"
-	"github.com/whosonfirst/go-whosonfirst-iterate/iterator"
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
 	"io"
 	"sync"
 	"sync/atomic"
@@ -47,7 +47,7 @@ func (pub *FeaturePublisher) Publish(ctx context.Context, emitter_uri string, ur
 		atomic.AddInt64(&count_bytes, int64(b))
 	}
 
-	emitter_cb := func(ctx context.Context, fh io.ReadSeeker, args ...interface{}) error {
+	emitter_cb := func(ctx context.Context, path string, fh io.ReadSeeker, args ...interface{}) error {
 
 		select {
 		case <-ctx.Done():

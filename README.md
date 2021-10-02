@@ -6,6 +6,10 @@ Go package for iterating through a set of Who's On First documents
 
 Documentation for this package is incomplete and will be updated shortly.
 
+## "v2"
+
+Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
+
 ## Example
 
 ```
@@ -14,8 +18,8 @@ package main
 import (
        "context"
        "flag"
-       "github.com/whosonfirst/go-whosonfirst-iterate/emitter"       
-       "github.com/whosonfirst/go-whosonfirst-iterate/iterator"
+       "github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"       
+       "github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
        "io"
        "log"
 )
@@ -28,8 +32,7 @@ func main() {
 
 	ctx := context.Background()
 
-	emitter_cb := func(ctx context.Context, fh io.ReadSeeker, args ...interface{}) error {
-		path, _ := index.PathForContext(ctx)
+	emitter_cb := func(ctx context.Context, path string, fh io.ReadSeeker, args ...interface{}) error {
 		log.Printf("Indexing %s\n", path)
 		return nil
 	}
@@ -60,7 +63,7 @@ _To be written_
 ```
 type EmitterInitializeFunc func(context.Context, string) (Emitter, error)
 
-type EmitterCallbackFunc func(context.Context, io.ReadSeekCloser, ...interface{}) error
+type EmitterCallbackFunc func(context.Context, string, io.ReadSeekCloser, ...interface{}) error
 
 type Emitter interface {
 	WalkURI(context.Context, EmitterCallbackFunc, string) error

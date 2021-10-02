@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/whosonfirst/go-whosonfirst-iterate/emitter"
-	"github.com/whosonfirst/go-whosonfirst-iterate/iterator"
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
 	"io"
 	"log"
 	"os"
@@ -35,13 +35,7 @@ func main() {
 	var count int64
 	count = 0
 
-	emitter_cb := func(ctx context.Context, fh io.ReadSeeker, args ...interface{}) error {
-
-		_, err := emitter.PathForContext(ctx)
-
-		if err != nil {
-			return err
-		}
+	emitter_cb := func(ctx context.Context, path string, fh io.ReadSeeker, args ...interface{}) error {
 
 		atomic.AddInt64(&count, 1)
 		return nil

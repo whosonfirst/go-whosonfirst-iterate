@@ -4,8 +4,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/whosonfirst/go-whosonfirst-iterate/emitter"
-	"github.com/whosonfirst/go-whosonfirst-iterate/publisher"
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/publisher"
 	"io"
 	"log"
 	"os"
@@ -15,7 +15,7 @@ import (
 func main() {
 
 	valid_schemes := strings.Join(emitter.Schemes(), ",")
-	emitter_desc := fmt.Sprintf("A valid whosonfirst/go-whosonfirst-iterator/emitter URI. Supported emitter URI schemes are: %s", valid_schemes)
+	emitter_desc := fmt.Sprintf("A valid whosonfirst/go-whosonfirst-iterator/v2 URI. Supported emitter URI schemes are: %s", valid_schemes)
 
 	var emitter_uri = flag.String("emitter-uri", "repo://", emitter_desc)
 

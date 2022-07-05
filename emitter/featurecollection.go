@@ -15,17 +15,22 @@ func init() {
 	RegisterEmitter(ctx, "featurecollection", NewFeatureCollectionEmitter)
 }
 
+// FeatureCollectionEmitter implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
 type FeatureCollectionEmitter struct {
 	Emitter
+	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.	
 	filters filters.Filters
 }
 
+// NewFeatureCollectionEmitter() returns a new `FeatureCollectionEmitter` instance configured by 'uri' in the form of:
+//
+//	featurecollection://?{PARAMETERS}
 func NewFeatureCollectionEmitter(ctx context.Context, uri string) (Emitter, error) {
 
 	f, err := filters.NewQueryFiltersFromURI(ctx, uri)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to create filters from query, %w", err)		
 	}
 
 	i := &FeatureCollectionEmitter{
@@ -40,7 +45,7 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 	fh, err := ReaderWithPath(ctx, uri)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to create reader for '%s', %w", uri, err)		
 	}
 
 	defer fh.Close()
@@ -48,7 +53,7 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 	body, err := io.ReadAll(fh)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to read body for '%s', %w", uri, err)
 	}
 
 	type FC struct {
@@ -61,7 +66,7 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 	err = json.Unmarshal(body, &collection)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to unmarshal '%s' as a feature collection, %w", uri, err)
 	}
 
 	for i, f := range collection.Features {
@@ -76,14 +81,14 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 		feature, err := json.Marshal(f)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to marshal feature at index %d, %w", i, err)
 		}
 
 		br := bytes.NewReader(feature)
 		fh, err := ioutil.NewReadSeekCloser(br)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to create new ReadSeekCloser for feature at index %d, %w", i, err)
 		}
 
 		if idx.filters != nil {

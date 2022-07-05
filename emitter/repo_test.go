@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-func TestDirectoryEmitter(t *testing.T) {
+func TestRepoEmitter(t *testing.T) {
 
 	ctx := context.Background()
 
-	e, err := NewEmitter(ctx, "directory://")
+	e, err := NewEmitter(ctx, "repo://")
 
 	if err != nil {
-		t.Fatalf("Failed to create directory emitter, %v", err)
+		t.Fatalf("Failed to create repo emitter, %v", err)
 	}
 
 	expected := int32(37)
@@ -25,10 +25,10 @@ func TestDirectoryEmitter(t *testing.T) {
 		return nil
 	}
 
-	err = e.WalkURI(ctx, cb, "../fixtures/data")
+	err = e.WalkURI(ctx, cb, "../fixtures")
 
 	if err != nil {
-		t.Fatalf("Failed to walk directory, %v", err)
+		t.Fatalf("Failed to walk repo, %v", err)
 	}
 
 	if count != expected {

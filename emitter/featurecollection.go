@@ -18,7 +18,7 @@ func init() {
 // FeatureCollectionEmitter implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
 type FeatureCollectionEmitter struct {
 	Emitter
-	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.	
+	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
 	filters filters.Filters
 }
 
@@ -30,7 +30,7 @@ func NewFeatureCollectionEmitter(ctx context.Context, uri string) (Emitter, erro
 	f, err := filters.NewQueryFiltersFromURI(ctx, uri)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create filters from query, %w", err)		
+		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
 	i := &FeatureCollectionEmitter{
@@ -45,7 +45,7 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 	fh, err := ReaderWithPath(ctx, uri)
 
 	if err != nil {
-		return fmt.Errorf("Failed to create reader for '%s', %w", uri, err)		
+		return fmt.Errorf("Failed to create reader for '%s', %w", uri, err)
 	}
 
 	defer fh.Close()
@@ -78,17 +78,19 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 			// pass
 		}
 
+		path := fmt.Sprintf("%s#%d", uri, i)
+
 		feature, err := json.Marshal(f)
 
 		if err != nil {
-			return fmt.Errorf("Failed to marshal feature at index %d, %w", i, err)
+			return fmt.Errorf("Failed to marshal feature for '%s', %w", path, err)
 		}
 
 		br := bytes.NewReader(feature)
 		fh, err := ioutil.NewReadSeekCloser(br)
 
 		if err != nil {
-			return fmt.Errorf("Failed to create new ReadSeekCloser for feature at index %d, %w", i, err)
+			return fmt.Errorf("Failed to create new ReadSeekCloser for '%s', %w", path, err)
 		}
 
 		if idx.filters != nil {
@@ -96,7 +98,7 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 			ok, err := idx.filters.Apply(ctx, fh)
 
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to apply filters for '%s', %w", path, err)
 			}
 
 			if !ok {
@@ -106,15 +108,14 @@ func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb Emitt
 			_, err = fh.Seek(0, 0)
 
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to seek(0, 0) for '%s', %w", path, err)
 			}
 		}
 
-		path := fmt.Sprintf("%s#%d", uri, i)
 		err = index_cb(ctx, path, fh)
 
 		if err != nil {
-			return err
+			return fmt.Errorf("Index callback failed for '%s', %w", path, err)
 		}
 	}
 

@@ -18,7 +18,7 @@ type FileEmitter struct {
 	filters filters.Filters
 }
 
-// NewFileCollectionEmitter() returns a new `FileEmitter` instance configured by 'uri' in the form of:
+// NewFileEmitter() returns a new `FileEmitter` instance configured by 'uri' in the form of:
 //
 //	file://?{PARAMETERS}
 func NewFileEmitter(ctx context.Context, uri string) (Emitter, error) {

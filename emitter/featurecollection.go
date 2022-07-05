@@ -40,6 +40,8 @@ func NewFeatureCollectionEmitter(ctx context.Context, uri string) (Emitter, erro
 	return i, nil
 }
 
+// WalkURI() walks (crawls) each feature in the GeoJSON FeatureCollection found in the file identified by 'uri' and for
+// each file (not excluded by any filters specified when `idx` was created) invokes 'index_cb'.
 func (idx *FeatureCollectionEmitter) WalkURI(ctx context.Context, index_cb EmitterCallbackFunc, uri string) error {
 
 	fh, err := ReaderWithPath(ctx, uri)

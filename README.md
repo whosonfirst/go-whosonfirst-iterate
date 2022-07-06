@@ -2,13 +2,9 @@
 
 Go package for iterating through a set of Who's On First documents
 
-## Important
+## Documentation
 
-Documentation for this package is incomplete and will be updated shortly.
-
-## "v2"
-
-Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
+[![Go Reference](https://pkg.go.dev/badge/github.com/whosonfirst/go-whosonfirst-iterate.svg)](https://pkg.go.dev/github.com/whosonfirst/go-whosonfirst-iterate)
 
 ## Example
 
@@ -48,54 +44,61 @@ _Error handling removed for the sake of brevity._
 
 ## Concepts
 
-The naming conventions (`iterator` and `emitter`) are not ideal. They may still be changed.
+The naming conventions (`iterator` and `emitter` and `publisher`) are not ideal. They may still be changed. Briefly:
 
-### Iterators
+* An "iterator" is a high-level construct that manages the dispatching and processing of multiple source URIs.
 
-_To be written_
+* An "emitter" is the code that walks (or "crawls") a given URI and emits documents to be proccesed by a user-defined callback function. Emitters are defined by the `emitter.Emitter` interface.
 
-### Emitters
+* A "publisher" is a higher-order construct that bundles an internal iterator with its own callback function to republish data derived from an iterator/emitter to an `io.Writer` target.
 
-_To be written_
+## URIs and Schemes (for emitters)
 
-## Interfaces
-
-```
-type EmitterInitializeFunc func(context.Context, string) (Emitter, error)
-
-type EmitterCallbackFunc func(context.Context, string, io.ReadSeekCloser, ...interface{}) error
-
-type Emitter interface {
-	WalkURI(context.Context, EmitterCallbackFunc, string) error
-}
-```
-
-_To be written_
-
-## URIs and Schemes 
-
-_To be written_
+The following emitters are supported by default:
 
 ### directory://
 
+`DirectoryEmitter` implements the `Emitter` interface for crawling records in a directory.
+
 ### featurecollection://
+
+`FeatureCollectionEmitter` implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
 
 ### file://
 
+`FileEmitter` implements the `Emitter` interface for crawling individual file records.
+
 ### filelist://
 
-### geojsonls://
+`FileListEmitter` implements the `Emitter` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
+
+### geojsonl://
+
+`GeojsonLEmitter` implements the `Emitter` interface for crawling features in a line-separated GeoJSON record.
+
+### null://
+
+`NullEmitter` implements the `Emitter` interface for appearing to crawl records but not doing anything.
 
 ### repo://
 
+`RepoEmitter` implements the `Emitter` interface for crawling records in a Who's On First style data directory.
+
 ## Query parameters
+
+The following query parameters are honoured by all `emitter.Emitter` instances:
+
+| Name | Value | Required | Notes
+| --- | --- | --- | --- |
+| include | String | No | One or more query filters (described below) to limit documents that will be processed. |
+| exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
+
+The following query paramters are honoured for `emitter.Emitter` URIs passed to the `iterator.NewIterator` method:
 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
 | _max_procs | Int | No | _To be written_ |
 | _exclude | String (a valid regular expression) | No | _To be written_ |
-| include | String | No | One or more query filters (described below) to limit documents that will be processed. |
-| exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
 
 ## Filters
 
@@ -208,6 +211,10 @@ $> ./bin/emit \
 1360521571
 1159157863
 ```
+
+## "v2"
+
+Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
 
 ## See also
 

@@ -216,6 +216,15 @@ $> ./bin/emit \
 
 Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
 
+## Related
+
+* https://github.com/whosonfirst/go-whosonfirst-iterate-bucket
+* https://github.com/whosonfirst/go-whosonfirst-iterate-git
+* https://github.com/whosonfirst/go-whosonfirst-iterate-github
+* https://github.com/whosonfirst/go-whosonfirst-iterate-organization
+* https://github.com/whosonfirst/go-whosonfirst-iterate-reader
+* https://github.com/whosonfirst/go-whosonfirst-iterate-sqlite
+
 ## See also
 
 * https://github.com/aaronland/go-json-query

@@ -4,13 +4,6 @@ github.com/aaronland/go-json-query
 # github.com/aaronland/go-roster v1.0.0
 ## explicit
 github.com/aaronland/go-roster
-# github.com/g8rswimmer/error-chain v1.0.0
-github.com/g8rswimmer/error-chain
-# github.com/natefinch/atomic v1.0.1
-github.com/natefinch/atomic
-# github.com/sfomuseum/go-flags v0.9.0
-## explicit
-github.com/sfomuseum/go-flags/flagset
 # github.com/tidwall/gjson v1.12.1
 github.com/tidwall/gjson
 # github.com/tidwall/match v1.1.1
@@ -23,11 +16,5 @@ github.com/whosonfirst/go-ioutil
 # github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
 ## explicit
 github.com/whosonfirst/go-whosonfirst-crawl
-# github.com/whosonfirst/go-writer v1.0.1
-## explicit
-github.com/whosonfirst/go-writer
-# github.com/whosonfirst/go-writer/v2 v2.0.0
-## explicit
-github.com/whosonfirst/go-writer/v2
 # github.com/whosonfirst/walk v0.0.1
 github.com/whosonfirst/walk

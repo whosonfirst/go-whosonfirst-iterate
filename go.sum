@@ -2,12 +2,6 @@ github.com/aaronland/go-json-query v0.1.2 h1:+yJBCJk9kcRAzbErhh+zOqK3DHSs/GmuSqX
 github.com/aaronland/go-json-query v0.1.2/go.mod h1:kkCl5KrO+fVSL2M8b/i3qO5PsnCpmajGXkbJHpEQPY8=
 github.com/aaronland/go-roster v1.0.0 h1:FRDGrTqsYySKjWnAhbBGXyeGlI/o5/t9FZYCbUmyQtI=
 github.com/aaronland/go-roster v1.0.0/go.mod h1:KIsYZgrJlAsyb9LsXSCvlqvbcCBVjCSqcQiZx42i9ro=
-github.com/g8rswimmer/error-chain v1.0.0 h1:WnwnunlvqtGPHVHmBfbmUyAgrtag8Y6nNpwLWmtSYOQ=
-github.com/g8rswimmer/error-chain v1.0.0/go.mod h1:XPJ/brUsL7yzc5VRlIxtf9GvoUqnOKVI9fg2MB5DWx8=
-github.com/natefinch/atomic v1.0.1 h1:ZPYKxkqQOx3KZ+RsbnP/YsgvxWQPGxjC0oBt2AhwV0A=
-github.com/natefinch/atomic v1.0.1/go.mod h1:N/D/ELrljoqDyT3rZrsUmtsuzvHkeB/wWjHV22AZRbM=
-github.com/sfomuseum/go-flags v0.9.0 h1:sKB5Be4LzSTz4yEZ1P0r4gB+J3PfiaxJg1b+JqifAHM=
-github.com/sfomuseum/go-flags v0.9.0/go.mod h1:VXOnnX1/yxQpX2yiwHaBV6aCmhtszQOL5bL1/nNo3co=
 github.com/tidwall/gjson v1.12.1 h1:ikuZsLdhr8Ws0IdROXUS1Gi4v9Z4pGqpX/CvJkxvfpo=
 github.com/tidwall/gjson v1.12.1/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1 h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=
@@ -18,9 +12,5 @@ github.com/whosonfirst/go-ioutil v1.0.2 h1:+GJPfa42OFn5A+5yJSc5jQTQIkNV3/MhYyg4p
 github.com/whosonfirst/go-ioutil v1.0.2/go.mod h1:2dS1vWdAIkiHDvDF8fYyjv6k2NISmwaIjJJeEDBEdvg=
 github.com/whosonfirst/go-whosonfirst-crawl v0.2.1 h1:nNG7r7/4MaII/NM8Df2oqgfgVNBDoIKlseleoX1vw1Q=
 github.com/whosonfirst/go-whosonfirst-crawl v0.2.1/go.mod h1:MTD1TCgAkXlAtysPU98ylrz9Y5+ZCfRrsrBnRyiH/t8=
-github.com/whosonfirst/go-writer v1.0.1 h1:Ew9tkA/rTgF8w7yNc9CrdioVBLltDwWfMM0kDSA6jvc=
-github.com/whosonfirst/go-writer v1.0.1/go.mod h1:pVM562YU8Mu2IHqgT+Rk4o4ITAHM6d5dxeJL5G/r3UU=
-github.com/whosonfirst/go-writer/v2 v2.0.0 h1:BQL9qR3z5yHGuRtbkqf/MYkaqu/p6r5txRTZ/h1w5xA=
-github.com/whosonfirst/go-writer/v2 v2.0.0/go.mod h1:/fiSSOP4uSOTCQOHzin9Ey/G9s55U4iRLdK9MHr2MMo=
 github.com/whosonfirst/walk v0.0.1 h1:t0QrqGwOdPMSeovFZSXfiS0GIGHrRXK3Wb9z5Uhs2bg=
 github.com/whosonfirst/walk v0.0.1/go.mod h1:1KtP/VeooSlFOI61p+THc/C16Ra8Z5MjpjI0tsd3c1M=

@@ -16,9 +16,9 @@ github.com/tidwall/pretty
 # github.com/whosonfirst/go-ioutil v1.0.2
 ## explicit; go 1.16
 github.com/whosonfirst/go-ioutil
-# github.com/whosonfirst/go-whosonfirst-crawl v0.2.1
-## explicit; go 1.12
+# github.com/whosonfirst/go-whosonfirst-crawl v0.2.2
+## explicit; go 1.18
 github.com/whosonfirst/go-whosonfirst-crawl
-# github.com/whosonfirst/walk v0.0.1
-## explicit; go 1.12
+# github.com/whosonfirst/walk v0.0.2
+## explicit; go 1.18
 github.com/whosonfirst/walk

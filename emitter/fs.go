@@ -4,26 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"os"
-	"path/filepath"
 
 	"github.com/whosonfirst/go-whosonfirst-crawl"
-	"github.com/whosonfirst/go-whosonfirst-iterate/v2/filters"	
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/filters"
 )
-
-func init() {
-	ctx := context.Background()
-}
 
 // FsEmitter implements the `Emitter` interface for crawling records in a fs.
 type FsEmitter struct {
 	Emitter
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
 	filters filters.Filters
-	fs: fs.FS
+	fs      fs.FS
 }
 
-func NewFsEmitter(ctx context.Context, iterator_fs fs.FS) (Emitter, error) {
+func NewFsEmitter(ctx context.Context, uri string, iterator_fs fs.FS) (Emitter, error) {
 
 	f, err := filters.NewQueryFiltersFromURI(ctx, uri)
 
@@ -32,7 +26,7 @@ func NewFsEmitter(ctx context.Context, iterator_fs fs.FS) (Emitter, error) {
 	}
 
 	idx := &FsEmitter{
-		fs: iterator_fs,
+		fs:      iterator_fs,
 		filters: f,
 	}
 
@@ -43,66 +37,63 @@ func NewFsEmitter(ctx context.Context, iterator_fs fs.FS) (Emitter, error) {
 // when `idx` was created) invokes 'index_cb'.
 func (idx *FsEmitter) WalkURI(ctx context.Context, index_cb EmitterCallbackFunc, uri string) error {
 
-	abs_path, err := filepath.Abs(uri)
+	var walk_func func(path string, d fs.DirEntry, err error) error
 
-	if err != nil {
-		return fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err)
-	}
-
-	crawl_cb := func(path string, info os.FileInfo) error {
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-			// pass
-		}
-
-		if info.IsDir() {
-			return nil
-		}
-
-		fh, err := ReaderWithPath(ctx, path)
+	walk_func = func(path string, d fs.DirEntry, err error) error {
 
 		if err != nil {
-			return fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)
+			return fmt.Errorf("Failed to walk %s, %w", path, err)
 		}
 
-		defer fh.Close()
+		if d.IsDir() {
+
+			if path == "." {
+				return nil
+			}
+
+			return fs.WalkDir(idx.fs, path, walk_func)
+		}
+
+		r, err := idx.fs.Open(path)
+
+		if err != nil {
+			return fmt.Errorf("Failed to open %s for reading, %w", path, err)
+		}
+
+		defer r.Close()
 
 		if idx.filters != nil {
 
-			ok, err := idx.filters.Apply(ctx, fh)
+			ok, err := idx.filters.Apply(ctx, r)
 
 			if err != nil {
-				return fmt.Errorf("Failed to apply filters for '%s', %w", abs_path, err)
+				return fmt.Errorf("Failed to apply filters for '%s', %w", path, err)
 			}
 
 			if !ok {
 				return nil
 			}
 
-			_, err = fh.Seek(0, 0)
+			_, err = r.Seek(0, 0)
 
 			if err != nil {
-				return fmt.Errorf("Failed to seek(0, 0) on reader for '%s', %w", abs_path, err)
+				return fmt.Errorf("Failed to seek(0, 0) on reader for '%s', %w", path, err)
 			}
 		}
 
-		err = index_cb(ctx, path, fh)
+		err = index_cb(ctx, path, r)
 
 		if err != nil {
-			return fmt.Errorf("Failed to invoke callback fir '%s', %w", abs_path, err)
+			return fmt.Errorf("Failed to invoke callback for '%s', %w", path, err)
 		}
 
 		return nil
 	}
 
-	c := crawl.NewCrawler(abs_path)
-	err = c.Crawl(crawl_cb)
+	err := fs.WalkDir(idx.fs, uri, walk_func)
 
 	if err != nil {
-		return fmt.Errorf("Failed to crawl '%s', %w", abs_path, err)
+		return fmt.Errorf("Failed to walk filesystem, %w", err)
 	}
 
 	return nil

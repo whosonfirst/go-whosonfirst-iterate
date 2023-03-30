@@ -224,6 +224,7 @@ Version 2.x.y of this package was released to address a problem with the way ver
 * https://github.com/whosonfirst/go-whosonfirst-iterate-organization
 * https://github.com/whosonfirst/go-whosonfirst-iterate-reader
 * https://github.com/whosonfirst/go-whosonfirst-iterate-sqlite
+* https://github.com/whosonfirst/go-whosonfirst-iterate-fs
 
 ## See also
 

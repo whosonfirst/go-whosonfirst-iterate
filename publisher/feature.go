@@ -3,10 +3,11 @@ package publisher
 import (
 	"context"
 	"fmt"
-	"github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
 	"io"
 	"sync"
 	"sync/atomic"
+
+	"github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
 )
 
 // FeaturePublisher implements the Publisher interface for (re)publishing GeoJSON Feature documents that are emitted by an `Iterator` instance.

@@ -1,7 +1,7 @@
 // Package iterator provides methods and utilities for iterating over a collection of records
 // (presumed but not required to be Who's On First records) from a variety of sources and dispatching
 // processing to user-defined callback functions.
-package iterator
+package iterate
 
 import (
 	"context"
@@ -19,22 +19,17 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/emitter"
 )
 
-type Foo struct {
-	Path string
-	Reader io.ReadSeeker
-}
-
-// type Iterator provides a struct that can be used for iterating over a collection of records
+// type Controller provides a struct that can be used for iterating over a collection of records
 // (presumed but not required to be Who's On First records) from a variety of sources and dispatching
 // processing to user-defined callback functions.
-type Iterator struct {
+type Controller struct {
 	// Emitter is a `emitter.Emitter` instance used to crawl and emit records.
 	Emitter emitter.Emitter
 	// EmitterCallbackFunc is a `emitter.EmitterCallbackFunc` callback function to be applied to each record emitted by `Emitter`.
 	EmitterCallbackFunc emitter.EmitterCallbackFunc
 	// Seen is the count of documents that have been seen (or emitted).
 	Seen int64
-	// count is the current number of documents being processed used to signal where an `Iterator` instance is still indexing (processing) documents.
+	// count is the current number of documents being processed used to signal where an `Controller` instance is still indexing (processing) documents.
 	count int64
 	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
 	max_procs int
@@ -45,22 +40,20 @@ type Iterator struct {
 	retry_after  int
 }
 
-// NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
+// NewController() returns a new `Controller` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
 // to be a valid `whosonfirst/go-whosonfirst-iterate/v2/emitter.Emitter` URI whose semantics are defined by the underlying
 // implementation of the `emitter.Emitter` interface. The following iterator-specific query parameters are also accepted:
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
-func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.EmitterCallbackFunc) (*Iterator, error) {
+func NewController(ctx context.Context, iterator_uri string) (*Controller, error) {
 
-	idx, err := emitter.NewEmitter(ctx, emitter_uri)
+	iter, err := NewIterator(ctx, iterator_uri)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create new emitter, %w", err)
+		return nil, fmt.Errorf("Failed to create new iterator, %w", err)
 	}
 
-	// Technically a no-op since we'll have parse 'emitter_uri' in NewEmitter but best not to assume
-
-	u, err := url.Parse(emitter_uri)
+	u, err := url.Parse(iterator_uri)
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse URI, %w", err)
@@ -121,9 +114,8 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 		}
 	}
 
-	i := Iterator{
-		Emitter:             idx,
-		EmitterCallbackFunc: emitter_cb,
+	i := Controller{
+		iter: iter,
 		Seen:                0,
 		count:               0,
 		max_procs:           max_procs,
@@ -147,9 +139,9 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 
 // IterateURIs processes 'uris' concurrent dispatching each URI to the iterator's underlying `Emitter.WalkURI`
 // method and `EmitterCallbackFunc` callback function.
-func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) iter.Seq2[*Foo, error] {
+func (idx *Controller) IterateURIs(ctx context.Context, uris ...string) iter.Seq2[*Candidate, error] {
 
-	return func(yield func(*Foo, error) bool) {
+	return func(yield func(*Candidate, error) bool) {
 
 		t1 := time.Now()
 		
@@ -213,14 +205,9 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) iter.Seq2[
 				// slog.Info("Walk", "uri", uri, "max_attempts", idx.max_attempts, "retry after", idx.retry_after)
 				
 				for attempts < idx.max_attempts {
-					
-					// slog.Info("Walk URI", "uri", uri, "attempts", attempts)
-					walk_err = idx.Emitter.WalkURI(ctx, local_callback, uri)
-					
-					if walk_err == nil {
-						break
-					}
-					
+
+					/*
+
 					attempts += 1
 					
 					if idx.retry_after != 0 && attempts < idx.max_attempts {
@@ -231,12 +218,31 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) iter.Seq2[
 						
 						time.Sleep(time.Duration(time_to_sleep) * time.Second)
 					}
+
+					*/
+					
+					for c, err := range iter.Iterate(ctx, uri) {
+
+						if !yield(c, err){
+							return
+						}
+					}
+					
+					// slog.Info("Walk URI", "uri", uri, "attempts", attempts)
+					walk_err = idx.Emitter.WalkURI(ctx, local_callback, uri)
+					
+					if walk_err == nil {
+						break
+					}
+					
 				}
-				
+
+				/*
 				if walk_err != nil {
 					slog.Error("Failed to walk URI, triggering error", "uri", uri, "error", walk_err)
 					err_ch <- fmt.Errorf("Failed to walk '%s', %w", uri, walk_err)
 				}
+				*/
 				
 			}(uri)
 		}
@@ -256,7 +262,7 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) iter.Seq2[
 }
 
 // IsIndexing() returns a boolean value indicating whether 'idx' is still processing documents.
-func (idx *Iterator) IsIndexing() bool {
+func (idx *Controller) IsIndexing() bool {
 
 	if atomic.LoadInt64(&idx.count) > 0 {
 		return true
@@ -266,11 +272,11 @@ func (idx *Iterator) IsIndexing() bool {
 }
 
 // increment() increments the count of documents being processed.
-func (idx *Iterator) increment() {
+func (idx *Controller) increment() {
 	atomic.AddInt64(&idx.count, 1)
 }
 
 // decrement() decrements the count of documents being processed.
-func (idx *Iterator) decrement() {
+func (idx *Controller) decrement() {
 	atomic.AddInt64(&idx.count, -1)
 }

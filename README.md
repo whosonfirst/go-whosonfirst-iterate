@@ -14,10 +14,11 @@ package main
 import (
        "context"
        "flag"
-       "github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"       
-       "github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
        "io"
        "log"
+
+       "github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"       
+       "github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
 )
 
 func main() {
@@ -55,6 +56,10 @@ The naming conventions (`iterator` and `emitter` and `publisher`) are not ideal.
 ## URIs and Schemes (for emitters)
 
 The following emitters are supported by default:
+
+### cwd://
+
+`CwdEmitter` implements the `Emitter` interface for crawling records in the current working directory.
 
 ### directory://
 

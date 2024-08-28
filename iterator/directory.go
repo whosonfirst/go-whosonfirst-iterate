@@ -6,13 +6,18 @@ import (
 	"iter"
 	"log/slog"
 	"os"
+	"path/filepath"
 
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
 func init() {
-	// ctx := context.Background()
-	// RegisterIterator(ctx, "directory", NewDirectoryIterator)
+	ctx := context.Background()
+	err := RegisterIterator(ctx, "directory", NewDirectoryIterator)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // DirectoryIterator implements the `Iterator` interface for crawling records in a directory.
@@ -52,15 +57,28 @@ func (idx *DirectoryIterator) Walk(ctx context.Context, uris ...string) iter.Seq
 
 		for _, uri := range uris {
 
+			logger := slog.Default()
+			logger = logger.With("uri", uri)
+
+			abs_path, err := filepath.Abs(uri)
+
+			if err != nil {
+				logger.Error("Failed to derive absolute path", "error", err)
+				yield(nil, err)
+				continue
+			}
+
+			logger = logger.With("path", abs_path)
+
 			fs_opts := &FSIteratorOptions{
 				Filters: idx.filters,
-				FS:      os.DirFS(uri),
+				FS:      os.DirFS(abs_path),
 			}
 
 			fs_iter, err := NewFSIteratorWithOptions(ctx, fs_opts)
 
 			if err != nil {
-				slog.Error("Failed to create new FS iterator", "uri", uri, "error", err)
+				logger.Error("Failed to create new FS iterator", "error", err)
 				yield(nil, err)
 				continue
 			}

@@ -16,7 +16,7 @@ func main() {
 
 	var iterator_uri string
 
-	flag.StringVar(&iterator_uri, "iterator-uri", "repo://", "...")
+	flag.StringVar(&iterator_uri, "iterator-uri", "directory://", "...")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Count files in one or more whosonfirst/go-whosonfirst-iterate/v3/iterator sources.\n")

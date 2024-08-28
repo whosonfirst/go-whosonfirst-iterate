@@ -51,6 +51,9 @@ func (idx *FSIterator) Walk(ctx context.Context, uris ...string) iter.Seq2[*Cand
 				return nil
 			}
 
+			// logger := slog.Default()
+			// logger = logger.With("path", path")
+
 			r, err := idx.options.FS.Open(path)
 
 			if err != nil {

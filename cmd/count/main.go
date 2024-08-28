@@ -48,7 +48,7 @@ func main() {
 			log.Fatal(err)
 		}
 
-		atomic.AddInt64(&count, 1)
+		go atomic.AddInt64(&count, 1)
 	}
 
 	log.Printf("Counted %d records (%d) in %v\n", count, count, time.Since(t1))

@@ -7,7 +7,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-
+	"sync"
+	
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
@@ -55,8 +56,16 @@ func (idx *DirectoryIterator) Walk(ctx context.Context, uris ...string) iter.Seq
 
 	return func(yield func(*Candidate, error) bool) {
 
+		wg := new(sync.WaitGroup)
+		
 		for _, uri := range uris {
 
+			wg.Add(1)
+			
+			go func(uri string) {
+
+				defer wg.Done()
+				
 			logger := slog.Default()
 			logger = logger.With("uri", uri)
 
@@ -65,7 +74,8 @@ func (idx *DirectoryIterator) Walk(ctx context.Context, uris ...string) iter.Seq
 			if err != nil {
 				logger.Error("Failed to derive absolute path", "error", err)
 				yield(nil, err)
-				continue
+				// continue
+				return
 			}
 
 			logger = logger.With("path", abs_path)
@@ -80,12 +90,16 @@ func (idx *DirectoryIterator) Walk(ctx context.Context, uris ...string) iter.Seq
 			if err != nil {
 				logger.Error("Failed to create new FS iterator", "error", err)
 				yield(nil, err)
-				continue
+				// continue
+				return
 			}
 
 			for c, err := range fs_iter.Walk(ctx) {
 				yield(c, err)
 			}
+			}(uri)
 		}
+
+		wg.Wait()		
 	}
 }

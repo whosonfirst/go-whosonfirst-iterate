@@ -3,16 +3,16 @@ package iterator
 import (
 	"context"
 	"fmt"
+	"iter"
+	"log/slog"
 	"os"
-	"path/filepath"
 
-	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
 func init() {
-	ctx := context.Background()
-	RegisterIterator(ctx, "directory", NewDirectoryIterator)
+	// ctx := context.Background()
+	// RegisterIterator(ctx, "directory", NewDirectoryIterator)
 }
 
 // DirectoryIterator implements the `Iterator` interface for crawling records in a directory.
@@ -46,73 +46,28 @@ func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
 	return idx, nil
 }
 
-func (idx *DirectoryIterator) Walk(ctx context.Context, uri string) iter.Seq2[*Candidate, error] {
+func (idx *DirectoryIterator) Walk(ctx context.Context, uris ...string) iter.Seq2[*Candidate, error] {
 
 	return func(yield func(*Candidate, error) bool) {
-		
-		abs_path, err := filepath.Abs(uri)
-		
-		if err != nil {
-			yield(nil, fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err))
-			return
-		}
 
-		crawl_cb := func(path string, info os.FileInfo) error {
-			
-			select {
-			case <-ctx.Done():
-				return nil
-			default:
-				// pass
+		for _, uri := range uris {
+
+			fs_opts := &FSIteratorOptions{
+				Filters: idx.filters,
+				FS:      os.DirFS(uri),
 			}
-			
-			if info.IsDir() {
-				return nil
-			}
-			
-			fh, err := ReaderWithPath(ctx, path)
-			
+
+			fs_iter, err := NewFSIteratorWithOptions(ctx, fs_opts)
+
 			if err != nil {
-				return fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)
-			}
-			
-			defer fh.Close()
-			
-			if idx.filters != nil {
-				
-				ok, err := idx.filters.Apply(ctx, fh)
-				
-				if err != nil {
-					return fmt.Errorf("Failed to apply filters for '%s', %w", abs_path, err)
-				}
-				
-				if !ok {
-					return nil
-				}
-				
-				_, err = fh.Seek(0, 0)
-				
-				if err != nil {
-					return fmt.Errorf("Failed to seek(0, 0) on reader for '%s', %w", abs_path, err)
-				}
+				slog.Error("Failed to create new FS iterator", "uri", uri, "error", err)
+				yield(nil, err)
+				continue
 			}
 
-			c := &Candidate{
-				Path: path,
-				Reader: fh,
-			}
-			
-			if !yield(c, nil){
-				return fmt.Errorf("Failed to yield %s, abs_path)
+			for c, err := range fs_iter.Walk(ctx) {
+				yield(c, err)
 			}
 		}
-		
-		c := crawl.NewCrawler(abs_path)
-		err = c.Crawl(crawl_cb)
-
-		if err != nil {
-			yield(nil, err)
-		}
-
 	}
 }

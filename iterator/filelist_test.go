@@ -2,11 +2,14 @@ package iterator
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 )
 
 func TestFileListIterator(t *testing.T) {
+
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	ctx := context.Background()
 

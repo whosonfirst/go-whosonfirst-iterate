@@ -45,15 +45,15 @@ func NewCwdIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	idx := &CwdIterator{
+	it := &CwdIterator{
 		filters:  f,
 		iterator: directory_idx,
 	}
 
-	return idx, nil
+	return it, nil
 }
 
-func (idx *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
+func (it *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
 	return func(yield func(Record, error) bool) {
 
@@ -64,7 +64,7 @@ func (idx *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[R
 			return
 		}
 
-		for r, err := range idx.iterator.Iterate(ctx, cwd) {
+		for r, err := range it.iterator.Iterate(ctx, cwd) {
 			yield(r, err)
 		}
 	}

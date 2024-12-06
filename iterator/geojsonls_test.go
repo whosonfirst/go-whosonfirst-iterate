@@ -2,11 +2,14 @@ package iterator
 
 import (
 	"context"
+	"log/slog"
 	"sync/atomic"
 	"testing"
 )
 
 func TestGeojsonLIterator(t *testing.T) {
+
+	slog.SetLogLoggerLevel(slog.LevelDebug)
 
 	ctx := context.Background()
 

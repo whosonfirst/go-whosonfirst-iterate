@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"log/slog"
 	"path/filepath"
 
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
@@ -39,25 +40,28 @@ func NewFileListIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	idx := &FileListIterator{
+	it := &FileListIterator{
 		filters: f,
 	}
 
-	return idx, nil
+	return it, nil
 }
 
-func (idx *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
+func (it *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
 	return func(yield func(Record, error) bool) {
 		for _, uri := range uris {
-			for r, err := range idx.iterate(ctx, uri) {
+			for r, err := range it.iterate(ctx, uri) {
 				yield(r, err)
 			}
 		}
 	}
 }
 
-func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
+func (it *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
+
+	logger := slog.Default()
+	logger = logger.With("uri", uri)
 
 	return func(yield func(Record, error) bool) {
 
@@ -68,16 +72,18 @@ func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 			return
 		}
 
-		fh, err := ReaderWithPath(ctx, abs_path)
+		logger = logger.With("path", abs_path)
+
+		filelist_r, err := ReaderWithPath(ctx, abs_path)
 
 		if err != nil {
 			yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err))
 			return
 		}
 
-		defer fh.Close()
+		defer filelist_r.Close()
 
-		scanner := bufio.NewScanner(fh)
+		scanner := bufio.NewScanner(filelist_r)
 
 		for scanner.Scan() {
 
@@ -90,41 +96,52 @@ func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 
 			path := scanner.Text()
 
-			fh, err := ReaderWithPath(ctx, path)
+			logger := slog.Default()
+			logger = logger.With("uri", uri)
+			logger = logger.With("filelist", abs_path)
+			logger = logger.With("path", path)
+
+			r, err := ReaderWithPath(ctx, path)
 
 			if err != nil {
+				logger.Debug("Failed to create reader for file", "error", err)
 				yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", path, err))
 				break
 			}
 
-			if idx.filters != nil {
+			if it.filters != nil {
 
-				ok, err := idx.filters.Apply(ctx, fh)
+				ok, err := it.filters.Apply(ctx, r)
 
 				if err != nil {
+					logger.Debug("Failed to apply filters to file", "error", err)
 					yield(nil, fmt.Errorf("Failed to apply filters to '%s', %w", path, err))
 					continue
 				}
 
 				if !ok {
+					logger.Debug("No matches after applying filters, skipping")
 					continue
 				}
 
-				_, err = fh.Seek(0, 0)
+				_, err = r.Seek(0, 0)
 
 				if err != nil {
+					logger.Debug("Failed to rewind reader", "error", err)
 					yield(nil, fmt.Errorf("Failed to reset file handle for '%s', %w", path, err))
 					continue
 				}
 			}
 
-			iter_r := NewRecord(path, fh)
+			logger.Debug("Yield new record")
+			iter_r := NewRecord(path, r)
 			yield(iter_r, nil)
 		}
 
 		err = scanner.Err()
 
 		if err != nil {
+			logger.Debug("Scanner reported an error", "error", err)
 			yield(nil, err)
 		}
 	}

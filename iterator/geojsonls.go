@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"iter"
+	"log/slog"
 
 	"github.com/whosonfirst/go-ioutil"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
@@ -41,44 +42,48 @@ func NewGeoJSONLIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	idx := &GeojsonLIterator{
+	it := &GeojsonLIterator{
 		filters: f,
 	}
 
-	return idx, nil
+	return it, nil
 }
 
-func (idx *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
+func (it *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
 	return func(yield func(Record, error) bool) {
 
 		for _, uri := range uris {
-			for r, err := range idx.iterate(ctx, uri) {
+			for r, err := range it.iterate(ctx, uri) {
 				yield(r, err)
 			}
 		}
 	}
 }
 
-func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
+func (it *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
+
+	logger := slog.Default()
+	logger = logger.With("uri", uri)
 
 	return func(yield func(Record, error) bool) {
 
-		fh, err := ReaderWithPath(ctx, uri)
+		r, err := ReaderWithPath(ctx, uri)
 
 		if err != nil {
+			logger.Debug("Failed to create reader", "error", err)
 			yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", uri, err))
 			return
 		}
 
-		defer fh.Close()
+		defer r.Close()
 
 		// see this - we're using ReadLine because it's entirely possible
 		// that the raw GeoJSON (LS) will be too long for bufio.Scanner
 		// see also - https://golang.org/pkg/bufio/#Reader.ReadLine
 		// (20170822/thisisaaronland)
 
-		reader := bufio.NewReader(fh)
+		reader := bufio.NewReader(r)
 		raw := bytes.NewBuffer([]byte(""))
 
 		i := 0
@@ -93,6 +98,11 @@ func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 			}
 
 			path := fmt.Sprintf("%s#%d", uri, i)
+
+			logger := slog.Default()
+			logger = logger.With("uri", uri)
+			logger = logger.With("path", path)
+
 			i += 1
 
 			fragment, is_prefix, err := reader.ReadLine()
@@ -102,6 +112,7 @@ func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 			}
 
 			if err != nil {
+				logger.Debug("Failed to readline", "error", err)
 				yield(nil, fmt.Errorf("Failed to read line at '%s', %w", path, err))
 				break
 			}
@@ -109,41 +120,47 @@ func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 			raw.Write(fragment)
 
 			if is_prefix {
+				logger.Debug("Line is prefix, skipping")
 				continue
 			}
 
 			br := bytes.NewReader(raw.Bytes())
-			fh, err := ioutil.NewReadSeekCloser(br)
+			ln_r, err := ioutil.NewReadSeekCloser(br)
 
 			if err != nil {
+				logger.Debug("Failed to create ReadSeekCloser from line", "error", err)
 				yield(nil, fmt.Errorf("Failed to create new ReadSeekCloser for '%s', %w", path, err))
 				break
 			}
 
-			defer fh.Close()
+			defer ln_r.Close()
 
-			if idx.filters != nil {
+			if it.filters != nil {
 
-				ok, err := idx.filters.Apply(ctx, fh)
+				ok, err := it.filters.Apply(ctx, ln_r)
 
 				if err != nil {
+					logger.Debug("Failed to apply filters", "error", err)
 					yield(nil, fmt.Errorf("Failed to apply filters for '%s', %w", path, err))
 					break
 				}
 
 				if !ok {
+					logger.Debug("No matches after applying filters, skipping")
 					continue
 				}
 
-				_, err = fh.Seek(0, 0)
+				_, err = ln_r.Seek(0, 0)
 
 				if err != nil {
+					logger.Debug("Failed to rewind reader", "error", err)
 					yield(nil, fmt.Errorf("Failed to reset file handle for '%s', %w", path, err))
 					break
 				}
 			}
 
-			iter_r := NewRecord(path, fh)
+			logger.Debug("Yield new record")
+			iter_r := NewRecord(path, ln_r)
 			yield(iter_r, nil)
 		}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"iter"
+	"log/slog"
 
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
@@ -37,52 +38,69 @@ func NewFileIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	idx := &FileIterator{
+	it := &FileIterator{
 		filters: f,
 	}
 
-	return idx, nil
+	return it, nil
 }
 
-func (idx *FileIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
+func (it *FileIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
 	return func(yield func(Record, error) bool) {
 
 		for _, uri := range uris {
+			for r, err := range it.iterate(ctx, uri) {
+				yield(r, err)
+			}
+		}
+	}
+}
 
-			fh, err := ReaderWithPath(ctx, uri)
+func (it *FileIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
+
+	logger := slog.Default()
+	logger = logger.With("uri", uri)
+
+	return func(yield func(Record, error) bool) {
+
+		r, err := ReaderWithPath(ctx, uri)
+
+		if err != nil {
+			logger.Debug("Failed to create reader", "error", err)
+			yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", uri, err))
+			return
+		}
+
+		defer r.Close()
+
+		if it.filters != nil {
+
+			ok, err := it.filters.Apply(ctx, r)
 
 			if err != nil {
-				yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", uri, err))
-				continue
+				logger.Debug("Failed to apply filters", "error", err)
+				yield(nil, fmt.Errorf("Failed to apply filters for '%s', %w", uri, err))
+				return
 			}
 
-			defer fh.Close()
-
-			if idx.filters != nil {
-
-				ok, err := idx.filters.Apply(ctx, fh)
-
-				if err != nil {
-					yield(nil, fmt.Errorf("Failed to apply filters for '%s', %w", uri, err))
-					continue
-				}
-
-				if !ok {
-					continue
-				}
-
-				_, err = fh.Seek(0, 0)
-
-				if err != nil {
-					yield(nil, fmt.Errorf("Failed to seek(0,) for '%s', %w", uri, err))
-					continue
-				}
+			if !ok {
+				logger.Debug("No matches after applying filters, skipping")
+				return
 			}
 
-			iter_r := NewRecord(uri, fh)
-			yield(iter_r, nil)
+			_, err = r.Seek(0, 0)
+
+			if err != nil {
+				logger.Debug("Failed to rewind reader", "error", err)
+				yield(nil, fmt.Errorf("Failed to seek(0,) for '%s', %w", uri, err))
+				return
+			}
 		}
+
+		logger.Debug("Yield new record")
+		iter_r := NewRecord(uri, r)
+		yield(iter_r, nil)
 	}
 
 }

@@ -53,9 +53,9 @@ func NewCwdIterator(ctx context.Context, uri string) (Iterator, error) {
 	return idx, nil
 }
 
-func (idx *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		cwd, err := os.Getwd()
 

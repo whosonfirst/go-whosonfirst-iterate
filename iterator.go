@@ -81,9 +81,9 @@ func NewIteratorFromURI(ctx context.Context, uri string) (*Iterator, error) {
 
 // IterateURIs processes 'uris' concurrent dispatching each URI to the iterator's underlying `Emitter.WalkURI`
 // method and `EmitterCallbackFunc` callback function.
-func (idx *Iterator) Iterate(ctx context.Context, provider_uri string, provider_sources ...string) iter.Seq2[*iterator.Record, error] {
+func (idx *Iterator) Iterate(ctx context.Context, provider_uri string, provider_sources ...string) iter.Seq2[iterator.Record, error] {
 
-	return func(yield func(*iterator.Record, error) bool) {
+	return func(yield func(iterator.Record, error) bool) {
 
 		it, err := iterator.NewIterator(ctx, provider_uri)
 
@@ -145,7 +145,7 @@ func (idx *Iterator) Iterate(ctx context.Context, provider_uri string, provider_
 
 					if idx.exclude_paths != nil {
 
-						if idx.exclude_paths.MatchString(r.URI) {
+						if idx.exclude_paths.MatchString(r.URI()) {
 							continue
 						}
 					}

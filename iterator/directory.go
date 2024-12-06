@@ -50,9 +50,9 @@ func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
 
 // WalkURI() walks (crawls) the directory named 'uri' and for each file (not excluded by any filters specified
 // when `idx` was created) invokes 'index_cb'.
-func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		for _, uri := range uris {
 
@@ -63,9 +63,9 @@ func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.
 	}
 }
 
-func (idx *DirectoryIterator) iterate(ctx context.Context, uri string) iter.Seq2[*Record, error] {
+func (idx *DirectoryIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		abs_path, err := filepath.Abs(uri)
 
@@ -119,10 +119,7 @@ func (idx *DirectoryIterator) iterate(ctx context.Context, uri string) iter.Seq2
 				}
 			}
 
-			iter_r := &Record{
-				URI:  path,
-				Body: rsc,
-			}
+			iter_r := NewRecord(path, rsc)
 
 			yield(iter_r, nil)
 			return nil

@@ -25,9 +25,9 @@ func NewNullIterator(ctx context.Context, uri string) (Iterator, error) {
 }
 
 // WalkURI() does nothing.
-func (idx *NullIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *NullIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 		return
 	}
 }

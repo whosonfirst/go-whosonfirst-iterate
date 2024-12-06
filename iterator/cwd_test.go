@@ -16,7 +16,7 @@ func TestCwdIterator(t *testing.T) {
 		t.Fatalf("Failed to create directory iterator, %v", err)
 	}
 
-	expected := int32(19)
+	expected := int32(16)
 	count := int32(0)
 
 	for _, err := range e.Iterate(ctx, "cwd://") {

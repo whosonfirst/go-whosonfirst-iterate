@@ -44,9 +44,9 @@ func NewFileIterator(ctx context.Context, uri string) (Iterator, error) {
 	return idx, nil
 }
 
-func (idx *FileIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *FileIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		for _, uri := range uris {
 
@@ -80,11 +80,7 @@ func (idx *FileIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[
 				}
 			}
 
-			iter_r := &Record{
-				URI:  uri,
-				Body: fh,
-			}
-
+			iter_r := NewRecord(uri, fh)
 			yield(iter_r, nil)
 		}
 	}

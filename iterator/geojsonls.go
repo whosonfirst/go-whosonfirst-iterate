@@ -48,9 +48,9 @@ func NewGeoJSONLIterator(ctx context.Context, uri string) (Iterator, error) {
 	return idx, nil
 }
 
-func (idx *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		for _, uri := range uris {
 			for r, err := range idx.iterate(ctx, uri) {
@@ -60,9 +60,9 @@ func (idx *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.S
 	}
 }
 
-func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[*Record, error] {
+func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		fh, err := ReaderWithPath(ctx, uri)
 
@@ -143,11 +143,7 @@ func (idx *GeojsonLIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 				}
 			}
 
-			iter_r := &Record{
-				URI:  path,
-				Body: fh,
-			}
-
+			iter_r := NewRecord(path, fh)
 			yield(iter_r, nil)
 		}
 

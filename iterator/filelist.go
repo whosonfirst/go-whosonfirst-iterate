@@ -46,9 +46,9 @@ func NewFileListIterator(ctx context.Context, uri string) (Iterator, error) {
 	return idx, nil
 }
 
-func (idx *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (idx *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 		for _, uri := range uris {
 			for r, err := range idx.iterate(ctx, uri) {
 				yield(r, err)
@@ -57,9 +57,9 @@ func (idx *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.S
 	}
 }
 
-func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[*Record, error] {
+func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[Record, error] {
 
-	return func(yield func(*Record, error) bool) {
+	return func(yield func(Record, error) bool) {
 
 		abs_path, err := filepath.Abs(uri)
 
@@ -118,11 +118,7 @@ func (idx *FileListIterator) iterate(ctx context.Context, uri string) iter.Seq2[
 				}
 			}
 
-			iter_r := &Record{
-				URI:  path,
-				Body: fh,
-			}
-
+			iter_r := NewRecord(path, fh)
 			yield(iter_r, nil)
 		}
 

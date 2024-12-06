@@ -1,27 +1,34 @@
 package iterator
 
 import (
-	"fmt"
 	"io"
 )
 
-type RecordX interface {
+type Record interface {
 	URI() string
 	Body() io.ReadSeeker
 }
 
-type Record struct {
-	URI  string
-	Body io.ReadSeeker
+type IteratorRecord struct {
+	Record
+	uri  string
+	body io.ReadSeeker
 }
 
-func (r *Record) ReadAll() ([]byte, error) {
+func (r *IteratorRecord) URI() string {
+	return r.uri
+}
 
-	_, err := r.Body.Seek(0, 0)
+func (r *IteratorRecord) Body() io.ReadSeeker {
+	return r.body
+}
 
-	if err != nil {
-		return nil, fmt.Errorf("Failed to rewind body, %w", err)
+func NewRecord(uri string, body io.ReadSeeker) Record {
+
+	r := &IteratorRecord{
+		uri:  uri,
+		body: body,
 	}
 
-	return io.ReadAll(r.Body)
+	return r
 }

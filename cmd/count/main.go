@@ -30,7 +30,7 @@ func main() {
 	var count int64
 	count = 0
 
-	iter, err := iterate.NewIterator(ctx, "foo://")
+	iter, err := iterate.NewIterator(ctx)
 
 	if err != nil {
 		log.Fatal(err)

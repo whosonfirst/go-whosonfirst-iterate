@@ -22,7 +22,7 @@ type IteratorInitializeFunc func(context.Context, string) (Iterator, error)
 
 // type Iterator is an interface for crawling data sources and "emitting" records. Data sources are assumed to be Who's On First records.
 type Iterator interface {
-	Iterate(context.Context, string) iter.Seq2[*Record, error]
+	Iterate(context.Context, ...string) iter.Seq2[*Record, error]
 }
 
 // iterators is a `aaronland/go-roster.Roster` instance used to maintain a list of registered `IteratorInitializeFunc` initialization functions.

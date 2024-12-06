@@ -45,7 +45,19 @@ func NewRepoIterator(ctx context.Context, uri string) (Iterator, error) {
 
 // WalkURI() appends 'uri' with "data" and then walks that directory and for each file (not excluded by any
 // filters specified when `idx` was created) invokes 'index_cb'.
-func (idx *RepoIterator) Iterate(ctx context.Context, uri string) iter.Seq2[*Record, error] {
+func (idx *RepoIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+
+	return func(yield func(*Record, error) bool) {
+
+		for _, uri := range uris {
+			for r, err := range idx.iterate(ctx, uri) {
+				yield(r, err)
+			}
+		}
+	}
+}
+
+func (idx *RepoIterator) iterate(ctx context.Context, uri string) iter.Seq2[*Record, error] {
 
 	return func(yield func(*Record, error) bool) {
 

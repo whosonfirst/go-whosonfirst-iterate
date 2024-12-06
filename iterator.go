@@ -30,19 +30,23 @@ type Iterator struct {
 	max_procs int
 	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
 	exclude_paths *regexp.Regexp
-
-	max_attempts int
-	retry_after  int
 }
 
-// NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
-// to be a valid `whosonfirst/go-whosonfirst-iterate/v2/emitter.Emitter` URI whose semantics are defined by the underlying
-// implementation of the `emitter.Emitter` interface. The following iterator-specific query parameters are also accepted:
-// * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
-// * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
-func NewIterator(ctx context.Context, provider_uri string) (*Iterator, error) {
+func NewIterator(ctx context.Context) (*Iterator, error) {
+	return NewIteratorFromURI(ctx, "iter://")
+}
 
-	u, err := url.Parse(provider_uri)
+func NewIteratorFromURI(ctx context.Context, uri string) (*Iterator, error) {
+
+	max_procs := runtime.NumCPU()
+
+	i := Iterator{
+		Seen:      0,
+		count:     0,
+		max_procs: max_procs,
+	}
+
+	u, err := url.Parse(uri)
 
 	if err != nil {
 		return nil, fmt.Errorf("Failed to parse URI, %w", err)
@@ -50,73 +54,23 @@ func NewIterator(ctx context.Context, provider_uri string) (*Iterator, error) {
 
 	q := u.Query()
 
-	max_procs := runtime.NumCPU()
+	if q.Has("max_procs") {
 
-	retry := false
-	max_attempts := 1
-	retry_after := 10 // seconds
-
-	if q.Has("_max_procs") {
-
-		max, err := strconv.ParseInt(q.Get("_max_procs"), 10, 64)
+		max, err := strconv.ParseInt(q.Get("max_procs"), 10, 64)
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse '_max_procs' parameter, %w", err)
+			return nil, fmt.Errorf("Failed to parse 'max_procs' parameter, %w", err)
 		}
 
 		max_procs = int(max)
 	}
 
-	if q.Has("_retry") {
+	if q.Has("exclude") {
 
-		v, err := strconv.ParseBool(q.Get("_retry"))
-
-		if err != nil {
-			return nil, fmt.Errorf("Failed to parse '_retry' parameter, %w", err)
-		}
-
-		retry = v
-	}
-
-	if retry {
-
-		if q.Has("_max_retries") {
-
-			v, err := strconv.Atoi(q.Get("_max_retries"))
-
-			if err != nil {
-				return nil, fmt.Errorf("Failed to parse '_max_retries' parameter, %w", err)
-			}
-
-			max_attempts = v
-		}
-
-		if q.Has("_retry_after") {
-
-			v, err := strconv.Atoi(q.Get("_retry_after"))
-
-			if err != nil {
-				return nil, fmt.Errorf("Failed to parse '_retry_after' parameter, %w", err)
-			}
-
-			retry_after = v
-		}
-	}
-
-	i := Iterator{
-		Seen:         0,
-		count:        0,
-		max_procs:    max_procs,
-		max_attempts: max_attempts,
-		retry_after:  retry_after,
-	}
-
-	if q.Has("_exclude") {
-
-		re_exclude, err := regexp.Compile(q.Get("_exclude"))
+		re_exclude, err := regexp.Compile(q.Get("exclude"))
 
 		if err != nil {
-			return nil, fmt.Errorf("Failed to parse '_exclude' parameter, %w", err)
+			return nil, fmt.Errorf("Failed to parse 'exclude' parameter, %w", err)
 		}
 
 		i.exclude_paths = re_exclude

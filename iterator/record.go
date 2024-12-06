@@ -5,6 +5,11 @@ import (
 	"io"
 )
 
+type RecordX interface {
+	URI() string
+	Body() io.ReadSeeker
+}
+
 type Record struct {
 	URI  string
 	Body io.ReadSeeker

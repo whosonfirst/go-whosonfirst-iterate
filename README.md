@@ -14,215 +14,34 @@ package main
 import (
        "context"
        "flag"
-       "io"
        "log"
 
-       "github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"       
-       "github.com/whosonfirst/go-whosonfirst-iterate/v2/iterator"
+       "github.com/whosonfirst/go-whosonfirst-iterate/v3"
 )
 
 func main() {
 
-	emitter_uri := flag.String("emitter-uri", "repo://", "A valid whosonfirst/go-whosonfirst-iterate/emitter URI")
+	iter_uri := flag.String("iterator-uri", "repo://", "A valid whosonfirst/go-whosonfirst-iterate/v3/iterator URI.")
 	
      	flag.Parse()
 
+	iter_sources := flag.Args()
+
 	ctx := context.Background()
+	
+	it, _ := iterate.NewIterator(ctx)
 
-	emitter_cb := func(ctx context.Context, path string, fh io.ReadSeeker, args ...interface{}) error {
-		log.Printf("Indexing %s\n", path)
-		return nil
+	for r, _ := range it.Iterate(ctx, iter_uri, iter_sources...){
+		log.Printf("Iterating %s\n", r.URI())	    
 	}
-
-	iter, _ := iterator.NewIterator(ctx, *emitter_uri, cb)
-
-	uris := flag.Args()
-	iter.IterateURIs(ctx, uris...)
 }
 ```
 
 _Error handling removed for the sake of brevity._
 
-## Concepts
+## "v3"
 
-The naming conventions (`iterator` and `emitter` and `publisher`) are not ideal. They may still be changed. Briefly:
-
-* An "iterator" is a high-level construct that manages the dispatching and processing of multiple source URIs.
-
-* An "emitter" is the code that walks (or "crawls") a given URI and emits documents to be proccesed by a user-defined callback function. Emitters are defined by the `emitter.Emitter` interface.
-
-* A "publisher" is a higher-order construct that bundles an internal iterator with its own callback function to republish data derived from an iterator/emitter to an `io.Writer` target.
-
-## URIs and Schemes (for emitters)
-
-The following emitters are supported by default:
-
-### cwd://
-
-`CwdEmitter` implements the `Emitter` interface for crawling records in the current working directory.
-
-### directory://
-
-`DirectoryEmitter` implements the `Emitter` interface for crawling records in a directory.
-
-### featurecollection://
-
-`FeatureCollectionEmitter` implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
-
-### file://
-
-`FileEmitter` implements the `Emitter` interface for crawling individual file records.
-
-### filelist://
-
-`FileListEmitter` implements the `Emitter` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
-
-### geojsonl://
-
-`GeojsonLEmitter` implements the `Emitter` interface for crawling features in a line-separated GeoJSON record.
-
-### null://
-
-`NullEmitter` implements the `Emitter` interface for appearing to crawl records but not doing anything.
-
-### repo://
-
-`RepoEmitter` implements the `Emitter` interface for crawling records in a Who's On First style data directory.
-
-## Query parameters
-
-The following query parameters are honoured by all `emitter.Emitter` instances:
-
-| Name | Value | Required | Notes
-| --- | --- | --- | --- |
-| include | String | No | One or more query filters (described below) to limit documents that will be processed. |
-| exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
-
-The following query paramters are honoured for `emitter.Emitter` URIs passed to the `iterator.NewIterator` method:
-
-| Name | Value | Required | Notes
-| --- | --- | --- | --- |
-| _max_procs | Int | No | _To be written_ |
-| _exclude | String (a valid regular expression) | No | _To be written_ |
-| _retry | Bool | No | A boolean flag signaling that if a URI being walked fails it should be retried. Used in conjunction with the `_max_retries` and `_retry_after` parameters. |
-| _max_retries | Int | No | The maximum number of attempts to walk any given URI. Defaults to "1" and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
-| _retry_after | Int | The number of seconds to wait between attempts to walk any given URI. Defaults to "10" (seconds) and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
-
-## Filters
-
-### QueryFilters
-
-You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `emitter.Emitter` URI, where the value is a string in the format of:
-
-```
-{PATH}={REGULAR EXPRESSION}
-```
-
-Paths follow the dot notation syntax used by the [tidwall/gjson](https://github.com/tidwall/gjson) package and regular expressions are any valid [Go language regular expression](https://golang.org/pkg/regexp/). Successful path lookups will be treated as a list of candidates and each candidate's string value will be tested against the regular expression's [MatchString](https://golang.org/pkg/regexp/#Regexp.MatchString) method.
-
-For example:
-
-```
-repo://?include=properties.wof:placetype=region
-```
-
-You can pass multiple query parameters. For example:
-
-```
-repo://?include=properties.wof:placetype=region&include=properties.wof:name=(?i)new.*
-```
-
-The default query mode is to ensure that all queries match but you can also specify that only one or more queries need to match by appending a `include_mode` or `exclude_mode` parameter where the value is either "ANY" or "ALL".
-
-## Tools
-
-```
-$> make cli
-go build -mod vendor -o bin/count cmd/count/main.go
-go build -mod vendor -o bin/emit cmd/emit/main.go
-```
-
-### count
-
-Count files in one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
-
-```
-> ./bin/count -h
-Count files in one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
-Usage:
-	 ./bin/count [options] uri(N) uri(N)
-Valid options are:
-
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterate/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
-```
-
-For example:
-
-```
-$> ./bin/count \
-	/usr/local/data/sfomuseum-data-architecture/
-
-2021/02/17 14:07:01 time to index paths (1) 87.908997ms
-2021/02/17 14:07:01 Counted 1072 records (1072) in 88.045771ms
-```
-
-Or:
-
-```
-$> ./bin/count \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=terminal&include=properties.mz:is_current=1' \
-	/usr/local/data/sfomuseum-data-architecture/
-	
-2021/02/17 14:09:18 time to index paths (1) 71.06355ms
-2021/02/17 14:09:18 Counted 4 records (4) in 71.184227ms
-```
-
-### emit
-
-Publish features from one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
-
-```
-> ./bin/emit -h
-Publish features from one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
-Usage:
-	 ./bin/emit [options] uri(N) uri(N)
-Valid options are:
-
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterator/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
-  -geojson
-    	Emit features as a well-formed GeoJSON FeatureCollection record.
-  -json
-    	Emit features as a well-formed JSON array.
-  -null
-    	Publish features to /dev/null
-  -stdout
-    	Publish features to STDOUT. (default true)
-```
-
-For example:
-
-```
-$> ./bin/emit \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
-	-geojson \	
-	/usr/local/data/sfomuseum-data-architecture/ \
-
-| jq '.features[]["properties"]["wof:id"]'
-
-1729813675
-1477855937
-1360521563
-1360521569
-1360521565
-1360521571
-1159157863
-```
-
-## "v2"
-
-Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
+The `/v3` release is a major, and backwards incompatible, refactoring of previous versions of this package.
 
 ## Related
 

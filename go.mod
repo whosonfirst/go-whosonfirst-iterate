@@ -1,6 +1,6 @@
-module github.com/whosonfirst/go-whosonfirst-iterate/v2
+module github.com/whosonfirst/go-whosonfirst-iterate/v3
 
-go 1.22
+go 1.23
 
 require (
 	github.com/aaronland/go-json-query v0.1.5

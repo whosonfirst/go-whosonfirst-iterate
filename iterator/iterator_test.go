@@ -145,3 +145,32 @@ func TestIteratorWithError(t *testing.T) {
 	}
 
 }
+
+func TestIteratorExcludeAlt(t *testing.T) {
+
+	ctx := context.Background()
+
+	iter_cb := func(ctx context.Context, path string, r io.ReadSeeker, args ...interface{}) error {
+		return fmt.Errorf("Nope")
+	}
+
+	iter, err := NewIterator(ctx, "repo://?_exclude_alt=true", iter_cb)
+
+	if err != nil {
+		t.Fatalf("Failed to create new iterator, %v", err)
+	}
+
+	rel_path := "../fixtures"
+	abs_path, err := filepath.Abs(rel_path)
+
+	if err != nil {
+		t.Fatalf("Failed to derive absolute path for %s, %v", rel_path, err)
+	}
+
+	err = iter.IterateURIs(ctx, abs_path)
+
+	if err == nil {
+		t.Fatalf("Expected an error iterating %s", abs_path)
+	}
+
+}

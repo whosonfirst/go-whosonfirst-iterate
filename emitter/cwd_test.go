@@ -17,7 +17,7 @@ func TestCwdEmitter(t *testing.T) {
 		t.Fatalf("Failed to create directory emitter, %v", err)
 	}
 
-	expected := int32(19)
+	expected := int32(18)
 	count := int32(0)
 
 	cb := func(ctx context.Context, path string, r io.ReadSeeker, args ...interface{}) error {

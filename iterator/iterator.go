@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/whosonfirst/go-whosonfirst-iterate/v2/emitter"
+	"github.com/whosonfirst/go-whosonfirst-uri"	
 )
 
 // type Iterator provides a struct that can be used for iterating over a collection of records
@@ -37,7 +38,7 @@ type Iterator struct {
 	max_procs int
 	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
 	exclude_paths *regexp.Regexp
-
+	exclude_alt_files bool
 	max_attempts int
 	retry_after  int
 }
@@ -143,6 +144,17 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 		i.exclude_paths = re_exclude
 	}
 
+	if q.Has("exclude-alt-files") {
+
+		v, err := strconv.ParseBool(q.Get("exclude-alt-files"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse 'exclude-alt-files' parameter, %w", err)
+		}
+
+		i.exclude_alt_files = v
+	}
+	
 	return &i, nil
 }
 
@@ -171,6 +183,19 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) error {
 			}
 		}
 
+		if idx.exclude_alt_files {
+
+			is_alt, err := uri.IsAltFile(path)
+
+			if err != nil {
+				return err
+			}
+
+			if is_alt {
+				return nil
+			}
+		}
+		
 		return idx.EmitterCallbackFunc(ctx, path, fh, args...)
 	}
 

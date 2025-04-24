@@ -42,8 +42,10 @@ type Iterator struct {
 	exclude_alt_files bool
 	max_attempts      int
 	retry_after       int
-	dedupe            bool
-	dedupe_map        *sync.Map
+	// skip records (specifically their relative URI) that have already been processed
+	dedupe bool
+	// lookup table to track records (specifically their relative URI) that have been processed
+	dedupe_map *sync.Map
 }
 
 // NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
@@ -51,6 +53,7 @@ type Iterator struct {
 // implementation of the `emitter.Emitter` interface. The following iterator-specific query parameters are also accepted:
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
+// * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
 func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.EmitterCallbackFunc) (*Iterator, error) {
 
 	idx, err := emitter.NewEmitter(ctx, emitter_uri)
@@ -160,6 +163,7 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 
 	if q.Has("_dedupe") {
 
+		slog.Info("DEDUPE YO")
 		v, err := strconv.ParseBool(q.Get("_dedupe"))
 
 		if err != nil {
@@ -216,9 +220,22 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) error {
 
 		if idx.dedupe {
 
-			_, seen := idx.dedupe_map.LoadOrStore(path, true)
+			id, uri_args, err := uri.ParseURI(path)
+
+			if err != nil {
+				return fmt.Errorf("Failed to parse %s, %w", path, err)
+			}
+
+			rel_path, err := uri.Id2RelPath(id, uri_args)
+
+			if err != nil {
+				return fmt.Errorf("Failed to derive relative path for %s, %w", path, err)
+			}
+
+			_, seen := idx.dedupe_map.LoadOrStore(rel_path, true)
 
 			if seen {
+				slog.Info("SKIP", "path", rel_path)
 				return nil
 			}
 		}

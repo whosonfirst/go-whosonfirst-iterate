@@ -163,7 +163,6 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 
 	if q.Has("_dedupe") {
 
-		slog.Info("DEDUPE YO")
 		v, err := strconv.ParseBool(q.Get("_dedupe"))
 
 		if err != nil {
@@ -235,7 +234,7 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) error {
 			_, seen := idx.dedupe_map.LoadOrStore(rel_path, true)
 
 			if seen {
-				slog.Info("SKIP", "path", rel_path)
+				slog.Debug("Skip record", "path", rel_path)
 				return nil
 			}
 		}

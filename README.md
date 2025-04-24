@@ -108,6 +108,7 @@ The following query paramters are honoured for `emitter.Emitter` URIs passed to 
 | _retry | Bool | No | A boolean flag signaling that if a URI being walked fails it should be retried. Used in conjunction with the `_max_retries` and `_retry_after` parameters. |
 | _max_retries | Int | No | The maximum number of attempts to walk any given URI. Defaults to "1" and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
 | _retry_after | Int | The number of seconds to wait between attempts to walk any given URI. Defaults to "10" (seconds) and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
+| _dedupe | Bool | No | A boolean value to track and skip records (specifically their relative URI) that have already been processed. |
 
 ## Filters
 

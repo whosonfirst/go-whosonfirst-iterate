@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -41,6 +42,8 @@ type Iterator struct {
 	exclude_alt_files bool
 	max_attempts      int
 	retry_after       int
+	dedupe            bool
+	dedupe_map        *sync.Map
 }
 
 // NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
@@ -155,6 +158,21 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 		i.exclude_alt_files = v
 	}
 
+	if q.Has("_dedupe") {
+
+		v, err := strconv.ParseBool(q.Get("_dedupe"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_dedupe' parameter, %w", err)
+		}
+
+		if v {
+			i.dedupe = true
+			i.dedupe_map = new(sync.Map)
+		}
+
+	}
+
 	return &i, nil
 }
 
@@ -192,6 +210,15 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) error {
 			}
 
 			if is_alt {
+				return nil
+			}
+		}
+
+		if idx.dedupe {
+
+			_, seen := idx.dedupe_map.LoadOrStore(path, true)
+
+			if seen {
 				return nil
 			}
 		}

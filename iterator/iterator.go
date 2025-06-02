@@ -40,8 +40,10 @@ type Iterator struct {
 	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
 	exclude_paths     *regexp.Regexp
 	exclude_alt_files bool
-	max_attempts      int
-	retry_after       int
+	// ...
+	include_paths *regexp.Regexp
+	max_attempts  int
+	retry_after   int
 	// skip records (specifically their relative URI) that have already been processed
 	dedupe bool
 	// lookup table to track records (specifically their relative URI) that have been processed
@@ -139,6 +141,17 @@ func NewIterator(ctx context.Context, emitter_uri string, emitter_cb emitter.Emi
 		retry_after:         retry_after,
 	}
 
+	if q.Has("_include") {
+
+		re_include, err := regexp.Compile(q.Get("_include"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_include' parameter, %w", err)
+		}
+
+		i.include_paths = re_include
+	}
+
 	if q.Has("_exclude") {
 
 		re_exclude, err := regexp.Compile(q.Get("_exclude"))
@@ -196,6 +209,13 @@ func (idx *Iterator) IterateURIs(ctx context.Context, uris ...string) error {
 	local_callback := func(ctx context.Context, path string, fh io.ReadSeeker, args ...interface{}) error {
 
 		defer atomic.AddInt64(&idx.Seen, 1)
+
+		if idx.include_paths != nil {
+
+			if !idx.include_paths.MatchString(path) {
+				return nil
+			}
+		}
 
 		if idx.exclude_paths != nil {
 

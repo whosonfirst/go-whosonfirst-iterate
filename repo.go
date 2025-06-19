@@ -48,7 +48,7 @@ func (it *RepoIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*
 	data_uris := make([]string, len(uris))
 
 	for idx, path := range uris {
-	
+
 		abs_path, err := filepath.Abs(path)
 
 		if err != nil {
@@ -66,9 +66,9 @@ func (it *RepoIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*
 }
 
 func (it *RepoIterator) Seen() int64 {
-     return it.iterator.Seen()
+	return it.iterator.Seen()
 }
 
 func (it *RepoIterator) IsIterating() bool {
-     return it.iterator.IsIterating()
+	return it.iterator.IsIterating()
 }

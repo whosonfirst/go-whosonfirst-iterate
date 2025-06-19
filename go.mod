@@ -1,4 +1,4 @@
-module github.com/whosonfirst/go-whosonfirst-iterate/v2
+module github.com/whosonfirst/go-whosonfirst-iterate/v3
 
 go 1.23
 

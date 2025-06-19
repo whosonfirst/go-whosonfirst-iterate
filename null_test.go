@@ -2,13 +2,12 @@ package iterate
 
 import (
 	"context"
-	"io"
 	"log/slog"
 	"path/filepath"
 	"testing"
 )
 
-func TestDirectoryIterator(t *testing.T) {
+func TestNullIterator(t *testing.T) {
 
 	ctx := context.Background()
 
@@ -18,36 +17,24 @@ func TestDirectoryIterator(t *testing.T) {
 		t.Fatalf("Failed to derive absolute path for fixtures, %v", err)
 	}
 
-	it, err := NewIterator(ctx, "directory://")
+	it, err := NewIterator(ctx, "null://")
 
 	if err != nil {
-		t.Fatalf("Failed to create new directory source, %v", err)
+		t.Fatalf("Failed to create new null source, %v", err)
 	}
 
-	for rec, err := range it.Iterate(ctx, abs_path) {
+	for _, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {
 			t.Fatalf("Failed to walk '%s', %v", abs_path, err)
 			break
 		}
 
-		_, err = io.ReadAll(rec.Body)
-
-		if err != nil {
-			t.Fatalf("Failed to read body for %s, %v", rec.Path, err)
-		}
-
-		_, err = rec.Body.Seek(0, 0)
-
-		if err != nil {
-			t.Fatalf("Failed to rewind body for %s, %v", rec.Path, err)
-		}
-
 		// slog.Debug("Record", "source", abs_path, "path", rec.Path)
 	}
 
 	seen := it.Seen()
-	expected := int64(40)
+	expected := int64(0)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

@@ -20,12 +20,11 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-uri"
 )
 
-type wrappedIterator struct {
+type concurrentIterator struct {
 	Iterator
-	Counter
 	iterator Iterator
-	// Seen is the count of documents that have been seen (or emitted).
-	Seen int64
+	// seen is the count of documents that have been seen (or emitted).
+	seen int64
 	// count is the current number of documents being processed used to signal where an `Iterator` instance is still indexing (processing) documents.
 	count int64
 	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
@@ -49,7 +48,7 @@ type wrappedIterator struct {
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
 // * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
-func wrapIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
+func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
 	u, err := url.Parse(iterator_uri)
 
@@ -112,9 +111,9 @@ func wrapIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterat
 		}
 	}
 
-	i := &wrappedIterator{
+	i := &concurrentIterator{
 		iterator:     it,
-		Seen:         0,
+		seen:         0,
 		count:        0,
 		max_procs:    max_procs,
 		max_attempts: max_attempts,
@@ -172,7 +171,7 @@ func wrapIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterat
 	return i, nil
 }
 
-func (it *wrappedIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
@@ -205,6 +204,11 @@ func (it *wrappedIterator) Iterate(ctx context.Context, uris ...string) iter.Seq
 
 			go func(uri string) {
 
+				t2 := time.Now()
+				defer func() {
+					slog.Debug("Time to iterate uri", "uri", uri, "time", time.Since(t2))
+				}()
+
 				<-throttle
 
 				defer func() {
@@ -223,9 +227,21 @@ func (it *wrappedIterator) Iterate(ctx context.Context, uris ...string) iter.Seq
 
 					if err != nil {
 						err_ch <- err
+						continue
 					}
 
-					rec_ch <- rec
+					atomic.AddInt64(&it.seen, 1)
+
+					ok, err := it.yieldRecord(ctx, rec)
+
+					if err != nil {
+						err_ch <- err
+						continue
+					}
+
+					if ok {
+						rec_ch <- rec
+					}
 				}
 
 			}(uri)
@@ -250,8 +266,13 @@ func (it *wrappedIterator) Iterate(ctx context.Context, uris ...string) iter.Seq
 	}
 }
 
-// IsIndexing() returns a boolean value indicating whether 'it' is still processing documents.
-func (it wrappedIterator) IsIndexing() bool {
+// Seen() returns the total number of records processed so far.
+func (it concurrentIterator) Seen() int64 {
+	return atomic.LoadInt64(&it.seen)
+}
+
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
+func (it concurrentIterator) IsIterating() bool {
 
 	if atomic.LoadInt64(&it.count) > 0 {
 		return true
@@ -261,18 +282,16 @@ func (it wrappedIterator) IsIndexing() bool {
 }
 
 // increment() increments the count of documents being processed.
-func (it wrappedIterator) increment() {
+func (it concurrentIterator) increment() {
 	atomic.AddInt64(&it.count, 1)
 }
 
 // decrement() decrements the count of documents being processed.
-func (it wrappedIterator) decrement() {
+func (it concurrentIterator) decrement() {
 	atomic.AddInt64(&it.count, -1)
 }
 
-func (it wrappedIterator) yieldRecord(ctx context.Context, rec *Record) (bool, error) {
-
-	defer atomic.AddInt64(&it.Seen, 1)
+func (it concurrentIterator) yieldRecord(ctx context.Context, rec *Record) (bool, error) {
 
 	if it.include_paths != nil {
 

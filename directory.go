@@ -9,21 +9,24 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
 func init() {
-	// ctx := context.Background()
-	// RegisterIterator(ctx, "directory", NewDirectoryIterator)
+	ctx := context.Background()
+	RegisterIterator(ctx, "directory", NewDirectoryIterator)
 }
 
 // DirectoryIterator implements the `Iterator` interface for crawling records in a directory.
 type DirectoryIterator struct {
 	Iterator
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
-	filters filters.Filters
+	filters   filters.Filters
+	seen      int64
+	iterating *atomic.Bool
 }
 
 // NewDirectoryIterator() returns a new `DirectoryIterator` instance configured by 'uri' in the form of:
@@ -43,16 +46,21 @@ func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	idx := &DirectoryIterator{
-		filters: f,
+	it := &DirectoryIterator{
+		filters:   f,
+		seen:      int64(0),
+		iterating: new(atomic.Bool),
 	}
 
-	return idx, nil
+	return it, nil
 }
 
-func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
+
+		it.iterating.Swap(true)
+		defer it.iterating.Swap(false)
 
 		for _, uri := range uris {
 
@@ -77,6 +85,8 @@ func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.
 					return nil
 				}
 
+				atomic.AddInt64(&it.seen, 1)
+
 				r, err := ReaderWithPath(ctx, path)
 
 				if err != nil {
@@ -85,9 +95,9 @@ func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 				defer r.Close()
 
-				if idx.filters != nil {
+				if it.filters != nil {
 
-					ok, err := idx.filters.Apply(ctx, r)
+					ok, err := it.filters.Apply(ctx, r)
 
 					if err != nil {
 						return fmt.Errorf("Failed to apply filters for '%s', %w", abs_path, err)
@@ -127,4 +137,12 @@ func (idx *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.
 			}
 		}
 	}
+}
+
+func (it *DirectoryIterator) Seen() int64 {
+	return atomic.LoadInt64(&it.seen)
+}
+
+func (it *DirectoryIterator) IsIterating() bool {
+	return it.iterating.Load()
 }

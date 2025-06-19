@@ -3,10 +3,8 @@ package iterate
 import (
 	"context"
 	"fmt"
-	// "io"
-	"net/url"
-	// "os"
 	"iter"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -15,6 +13,8 @@ import (
 
 type Iterator interface {
 	Iterate(context.Context, ...string) iter.Seq2[*Record, error]
+	Seen() int64
+	IsIterating() bool
 }
 
 // IteratorInitializationFunc is a function defined by individual iterator package and used to create
@@ -27,7 +27,7 @@ var iterators roster.Roster
 // RegisterIterator() associates 'scheme' with 'init_func' in an internal list of avilable `Iterator` implementations.
 func RegisterIterator(ctx context.Context, scheme string, f IteratorInitializationFunc) error {
 
-	err := ensureSpatialRoster()
+	err := ensureRoster()
 
 	if err != nil {
 		return fmt.Errorf("Failed to register %s scheme, %w", scheme, err)
@@ -52,6 +52,12 @@ func NewIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Emittter URI is missing scheme '%s'", uri)
 	}
 
+	err = ensureRoster()
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to register %s scheme, %w", scheme, err)
+	}
+
 	i, err := iterators.Driver(ctx, scheme)
 
 	if err != nil {
@@ -74,7 +80,7 @@ func NewIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, err
 	}
 
-	return wrapIterator(ctx, uri, it)
+	return newConcurrentIterator(ctx, uri, it)
 }
 
 // IteratorSchemes() returns the list of schemes that have been "registered".
@@ -83,7 +89,7 @@ func IteratorSchemes() []string {
 	ctx := context.Background()
 	schemes := []string{}
 
-	err := ensureSpatialRoster()
+	err := ensureRoster()
 
 	if err != nil {
 		return schemes
@@ -98,9 +104,9 @@ func IteratorSchemes() []string {
 	return schemes
 }
 
-// ensureDispatcherRoster() ensures that a `aaronland/go-roster.Roster` instance used to maintain a list of registered `IteratorInitializationFunc`
+// ensureRoster() ensures that a `aaronland/go-roster.Roster` instance used to maintain a list of registered `IteratorInitializationFunc`
 // initialization functions is present
-func ensureSpatialRoster() error {
+func ensureRoster() error {
 
 	if iterators == nil {
 

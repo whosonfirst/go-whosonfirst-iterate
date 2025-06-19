@@ -1,0 +1,323 @@
+// Package iterator provides methods and utilities for iterating over a collection of records
+// (presumed but not required to be Who's On First records) from a variety of sources and dispatching
+// processing to user-defined callback functions.
+package iterate
+
+import (
+	"context"
+	"fmt"
+	_ "io"
+	"iter"
+	"log/slog"
+	"net/url"
+	"regexp"
+	"runtime"
+	"strconv"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/whosonfirst/go-whosonfirst-uri"
+)
+
+type Iterator struct {
+	// Seen is the count of documents that have been seen (or emitted).
+	Seen int64
+	// count is the current number of documents being processed used to signal where an `Iterator` instance is still indexing (processing) documents.
+	count int64
+	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
+	max_procs int
+	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
+	exclude_paths     *regexp.Regexp
+	exclude_alt_files bool
+	// ...
+	include_paths *regexp.Regexp
+	max_attempts  int
+	retry_after   int
+	// skip records (specifically their relative URI) that have already been processed
+	dedupe bool
+	// lookup table to track records (specifically their relative URI) that have been processed
+	dedupe_map *sync.Map
+}
+
+// NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
+// to be a valid `whosonfirst/go-whosonfirst-iterate/v2/emitter.Emitter` URI whose semantics are defined by the underlying
+// implementation of the `emitter.Emitter` interface. The following iterator-specific query parameters are also accepted:
+// * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
+// * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
+// * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
+func NewIterator(ctx context.Context, iterator_uri string) (*Iterator, error) {
+
+	u, err := url.Parse(iterator_uri)
+
+	if err != nil {
+		return nil, err
+	}
+
+	q := u.Query()
+
+	max_procs := runtime.NumCPU()
+
+	retry := false
+	max_attempts := 1
+	retry_after := 10 // seconds
+
+	if q.Has("_max_procs") {
+
+		max, err := strconv.ParseInt(q.Get("_max_procs"), 10, 64)
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_max_procs' parameter, %w", err)
+		}
+
+		max_procs = int(max)
+	}
+
+	if q.Has("_retry") {
+
+		v, err := strconv.ParseBool(q.Get("_retry"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_retry' parameter, %w", err)
+		}
+
+		retry = v
+	}
+
+	if retry {
+
+		if q.Has("_max_retries") {
+
+			v, err := strconv.Atoi(q.Get("_max_retries"))
+
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse '_max_retries' parameter, %w", err)
+			}
+
+			max_attempts = v
+		}
+
+		if q.Has("_retry_after") {
+
+			v, err := strconv.Atoi(q.Get("_retry_after"))
+
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse '_retry_after' parameter, %w", err)
+			}
+
+			retry_after = v
+		}
+	}
+
+	i := Iterator{
+		Seen:         0,
+		count:        0,
+		max_procs:    max_procs,
+		max_attempts: max_attempts,
+		retry_after:  retry_after,
+	}
+
+	if q.Has("_include") {
+
+		re_include, err := regexp.Compile(q.Get("_include"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_include' parameter, %w", err)
+		}
+
+		i.include_paths = re_include
+	}
+
+	if q.Has("_exclude") {
+
+		re_exclude, err := regexp.Compile(q.Get("_exclude"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_exclude' parameter, %w", err)
+		}
+
+		i.exclude_paths = re_exclude
+	}
+
+	if q.Has("_exclude_alt") {
+
+		v, err := strconv.ParseBool(q.Get("_exclude_alt"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_exclude_alt' parameter, %w", err)
+		}
+
+		i.exclude_alt_files = v
+	}
+
+	if q.Has("_dedupe") {
+
+		v, err := strconv.ParseBool(q.Get("_dedupe"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_dedupe' parameter, %w", err)
+		}
+
+		if v {
+			i.dedupe = true
+			i.dedupe_map = new(sync.Map)
+		}
+
+	}
+
+	return &i, nil
+}
+
+func (it *Iterator) Iterate(ctx context.Context, src Source, uris ...string) iter.Seq2[*Record, error] {
+
+	return func(yield func(rec *Record, err error) bool) {
+
+		t1 := time.Now()
+
+		defer func() {
+			slog.Debug("Time to process paths", "count", len(uris), "time", time.Since(t1))
+		}()
+
+		it.increment()
+		defer it.decrement()
+
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
+		procs := it.max_procs
+		throttle := make(chan bool, procs)
+
+		for i := 0; i < procs; i++ {
+			throttle <- true
+		}
+
+		done_ch := make(chan bool)
+		err_ch := make(chan error)
+		rec_ch := make(chan *Record)
+
+		remaining := len(uris)
+
+		for _, uri := range uris {
+
+			go func(uri string) {
+
+				<-throttle
+
+				defer func() {
+					throttle <- true
+					done_ch <- true
+				}()
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+					// pass
+				}
+
+				for rec, err := range src.Walk(ctx, uri) {
+
+					if err != nil {
+						err_ch <- err
+					}
+
+					rec_ch <- rec
+				}
+
+			}(uri)
+		}
+
+		for remaining > 0 {
+			select {
+			case <-done_ch:
+				remaining -= 1
+			case err := <-err_ch:
+				yield(nil, err)
+				return
+			case rec := <-rec_ch:
+				if !yield(rec, nil) {
+					return
+				}
+			default:
+				// pass
+			}
+		}
+
+	}
+}
+
+// IsIndexing() returns a boolean value indicating whether 'it' is still processing documents.
+func (it *Iterator) IsIndexing() bool {
+
+	if atomic.LoadInt64(&it.count) > 0 {
+		return true
+	}
+
+	return false
+}
+
+// increment() increments the count of documents being processed.
+func (it *Iterator) increment() {
+	atomic.AddInt64(&it.count, 1)
+}
+
+// decrement() decrements the count of documents being processed.
+func (it *Iterator) decrement() {
+	atomic.AddInt64(&it.count, -1)
+}
+
+func (it *Iterator) yieldRecord(ctx context.Context, rec *Record) (bool, error) {
+
+	defer atomic.AddInt64(&it.Seen, 1)
+
+	if it.include_paths != nil {
+
+		if !it.include_paths.MatchString(rec.Path) {
+			return false, nil
+		}
+	}
+
+	if it.exclude_paths != nil {
+
+		if it.exclude_paths.MatchString(rec.Path) {
+			return false, nil
+		}
+	}
+
+	if it.exclude_alt_files {
+
+		is_alt, err := uri.IsAltFile(rec.Path)
+
+		if err != nil {
+			return false, err
+		}
+
+		if is_alt {
+			return false, nil
+		}
+	}
+
+	if it.dedupe {
+
+		id, uri_args, err := uri.ParseURI(rec.Path)
+
+		if err != nil {
+			return false, fmt.Errorf("Failed to parse %s, %w", rec.Path, err)
+		}
+
+		rel_path, err := uri.Id2RelPath(id, uri_args)
+
+		if err != nil {
+			return false, fmt.Errorf("Failed to derive relative path for %s, %w", rec.Path, err)
+		}
+
+		_, seen := it.dedupe_map.LoadOrStore(rel_path, true)
+
+		if seen {
+			slog.Debug("Skip record", "path", rel_path)
+			return false, nil
+		}
+	}
+
+	return true, nil
+}

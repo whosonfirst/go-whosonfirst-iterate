@@ -232,19 +232,34 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 					atomic.AddInt64(&it.seen, 1)
 
-					ok, err := it.yieldRecord(ctx, rec)
+					ok, err := it.shouldYieldRecord(ctx, rec)
 
 					if err != nil {
 						err_ch <- err
 						continue
 					}
 
-					if ok {
-						rec_ch <- rec
+					if !ok {
+						rec.Body.Close()
+						continue
 					}
+
+					rec_ch <- rec
 				}
 
 			}(uri)
+		}
+
+		do_yield := func(rec *Record, err error) bool {
+
+			if rec != nil {
+				defer func() {
+					slog.Debug("Close record", "path", rec.Path)
+					rec.Body.Close()
+				}()
+			}
+
+			return yield(rec, err)
 		}
 
 		for remaining > 0 {
@@ -252,10 +267,10 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 			case <-done_ch:
 				remaining -= 1
 			case err := <-err_ch:
-				yield(nil, err)
+				do_yield(nil, err)
 				return
 			case rec := <-rec_ch:
-				if !yield(rec, nil) {
+				if !do_yield(rec, nil) {
 					return
 				}
 			default:
@@ -291,7 +306,7 @@ func (it concurrentIterator) decrement() {
 	atomic.AddInt64(&it.count, -1)
 }
 
-func (it concurrentIterator) yieldRecord(ctx context.Context, rec *Record) (bool, error) {
+func (it concurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {
 
 	if it.include_paths != nil {
 

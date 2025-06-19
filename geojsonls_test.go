@@ -8,20 +8,20 @@ import (
 	"testing"
 )
 
-func TestDirectoryIterator(t *testing.T) {
+func TestGeoJSONLSIterator(t *testing.T) {
 
 	ctx := context.Background()
 
-	abs_path, err := filepath.Abs("fixtures")
+	abs_path, err := filepath.Abs("fixtures/collection.geojsonl")
 
 	if err != nil {
 		t.Fatalf("Failed to derive absolute path for fixtures, %v", err)
 	}
 
-	it, err := NewIterator(ctx, "directory://")
+	it, err := NewIterator(ctx, "geojsonl://")
 
 	if err != nil {
-		t.Fatalf("Failed to create new directory source, %v", err)
+		t.Fatalf("Failed to create new geojsonl source, %v", err)
 	}
 
 	for rec, err := range it.Iterate(ctx, abs_path) {
@@ -51,7 +51,7 @@ func TestDirectoryIterator(t *testing.T) {
 	}
 
 	seen := it.Seen()
-	expected := int64(40)
+	expected := int64(2)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

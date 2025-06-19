@@ -93,31 +93,29 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 					return fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)
 				}
 
-				defer r.Close()
-
 				if it.filters != nil {
 
 					ok, err := it.filters.Apply(ctx, r)
 
 					if err != nil {
+						r.Close()
 						return fmt.Errorf("Failed to apply filters for '%s', %w", abs_path, err)
 					}
 
 					if !ok {
+						r.Close()
 						return nil
 					}
 
 					_, err = r.Seek(0, 0)
 
 					if err != nil {
+						r.Close()
 						return fmt.Errorf("Failed to seek(0, 0) on reader for '%s', %w", abs_path, err)
 					}
 				}
 
-				rec := &Record{
-					Path: path,
-					Body: r,
-				}
+				rec := NewRecord(path, r)
 
 				mu.Lock()
 				defer mu.Unlock()

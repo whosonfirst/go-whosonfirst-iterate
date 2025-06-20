@@ -222,9 +222,23 @@ $> ./bin/emit \
 1159157863
 ```
 
-## "v2"
+## Notes about writing your own `iterate.Iterator` implementation.
 
-Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
+Under the hood all `iterate.Iterate` instances are wrapped using the (private) `concurrentIterator` implementation. This is the code that implements throttling, file matching and other common tasks.
+
+Importantly, it also takes care of automatically closing any `Record.Body` instances after that `Record` instance has been yielded (and the `yield` function completes).
+
+As a consequence you should _not_ automatically close `Record.Body` instances in your own code using the common `defer rec.Body.Close()` idiom. This is unfortunate because it makes ensuring that those instances are closed after they are opened but, for whatever reasons, not scheduled to be yielded. This is a by-product of the way that Go `yield` functions work and the extra work to ensure that filehandles are closed (when not being yielded) is just the "cost of doing business" I guess.
+
+_And yes, I did try using Go 1.24's `runtime.AddCleanup` but because it execute as part of the runtime.GC process it often gets triggered after the *Record instance has been purged without closing the underlying file handle. Basically what we need is a Python-style object level destructor but those don't exist yet so, again, here we are._
+
+## Version
+
+## v3
+
+## v2
+
+Version `2.x` of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
 
 ## Related
 

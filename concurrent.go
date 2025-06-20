@@ -232,6 +232,24 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 					atomic.AddInt64(&it.seen, 1)
 
+					// Notes about automatically closing rec.Body
+					// It would be nice to be able to just use the common
+					// defer rec.Body.Close() here but the mechanics of
+					// the way yield functions works means we need to do
+					// after the yield function. This happens below in the
+					// unsurprisingly named `do_yield` function. What all
+					// of this means is that we need to be more attentive
+					// than usual about closing filehandles, when necessary,
+					// before the *Record instance is yield-ed. I guess this
+					// is just the price of using iterators for the time
+					// being. And yes, I did try using runtime.AddCleanup
+					// but because it execute as part of the runtime.GC process
+					// it often gets triggered after the *Record instance
+					// has been purged without closing the underlying file
+					// handle. Basically what we need is a Python-style object
+					// level destructor but those don't exist yet so, again,
+					// here we are.
+
 					ok, err := it.shouldYieldRecord(ctx, rec)
 
 					if err != nil {
@@ -251,6 +269,8 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 		}
 
 		do_yield := func(rec *Record, err error) bool {
+
+			// This bit is important. See notes above.
 
 			if rec != nil {
 				defer func() {

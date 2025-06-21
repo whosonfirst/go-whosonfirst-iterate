@@ -95,23 +95,16 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 
 				if it.filters != nil {
 
-					ok, err := it.filters.Apply(ctx, r)
+					ok, err := ApplyFilters(ctx, r, it.filters)
 
 					if err != nil {
 						r.Close()
-						return fmt.Errorf("Failed to apply filters for '%s', %w", abs_path, err)
+						return err
 					}
 
 					if !ok {
 						r.Close()
 						return nil
-					}
-
-					_, err = r.Seek(0, 0)
-
-					if err != nil {
-						r.Close()
-						return fmt.Errorf("Failed to seek(0, 0) on reader for '%s', %w", abs_path, err)
 					}
 				}
 

@@ -1,10 +1,11 @@
-package emit
+package count
 
 import (
 	"context"
 	"flag"
-	"io"
-	"os"
+	"log/slog"
+	"sync/atomic"
+	"time"
 
 	"github.com/sfomuseum/go-flags/flagset"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
@@ -21,24 +22,25 @@ func RunWithFlagSet(ctx context.Context, fs *flag.FlagSet) error {
 
 	paths := fs.Args()
 
+	count := int64(0)
+
 	iter, err := iterate.NewIterator(ctx, iterator_uri)
 
 	if err != nil {
 		return err
 	}
 
-	for rec, err := range iter.Iterate(ctx, paths...) {
+	t1 := time.Now()
+
+	for _, err := range iter.Iterate(ctx, paths...) {
 
 		if err != nil {
 			return err
 		}
 
-		_, err = io.Copy(os.Stdout, rec.Body)
-
-		if err != nil {
-			return err
-		}
+		atomic.AddInt64(&count, 1)
 	}
 
+	slog.Info("Counted records", "count", count, "time", time.Since(t1))
 	return nil
 }

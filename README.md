@@ -8,6 +8,40 @@ Go package for iterating through a set of Who's On First documents
 
 ## Example
 
+Version 3.x of this package introduce major, backward-incompatible changes from earlier releases. That said, migragting from version 2.x to 3.x should be relatively straightforward as a the _basic_ concepts are still the same but (hopefully) simplified. For example:
+
+```
+import (
+	"context"
+	"flag"
+	"log"
+
+	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
+)
+
+func main() {
+
+     	var iterator_uri string
+
+	flag.StringVar(&iterator_uri, "iterator-uri", "repo://". "A registered whosonfirst/go-whosonfirst-iterate/v3.Iterator URI.")
+	ctx := context.Background()
+	
+	iter, _:= iterate.NewIterator(ctx, iterator_uri)
+
+	paths := flag.Args()
+	
+	for rec, _ := range iter.Iterate(ctx, paths...) {
+		log.Printf("Indexing %s\n", rec.Path)
+	}
+}
+```
+
+_Error handling removed for the sake of brevity._
+
+### Version 2.x (the old way)
+
+This is how you would do the same thing using the older version 2.x code:
+
 ```
 package main
 
@@ -41,17 +75,9 @@ func main() {
 }
 ```
 
-_Error handling removed for the sake of brevity._
-
 ## Concepts
 
-The naming conventions (`iterator` and `emitter` and `publisher`) are not ideal. They may still be changed. Briefly:
-
-* An "iterator" is a high-level construct that manages the dispatching and processing of multiple source URIs.
-
-* An "emitter" is the code that walks (or "crawls") a given URI and emits documents to be proccesed by a user-defined callback function. Emitters are defined by the `emitter.Emitter` interface.
-
-* A "publisher" is a higher-order construct that bundles an internal iterator with its own callback function to republish data derived from an iterator/emitter to an `io.Writer` target.
+TBW...
 
 ## URIs and Schemes (for emitters)
 
@@ -103,7 +129,8 @@ The following query paramters are honoured for `emitter.Emitter` URIs passed to 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
 | _max_procs | Int | No | _To be written_ |
-| _exclude | String (a valid regular expression) | No | _To be written_ |
+| _include | String (a valid regular expression) for paths (uris) to include for processing. | No | _To be written_ |
+| _exclude | String (a valid regular expression) for paths (uris) to exclude from processing. | No | _To be written_ |
 | _exclude_alt | Bool | No | If true do not process "alternate geometry" files. |
 | _retry | Bool | No | A boolean flag signaling that if a URI being walked fails it should be retried. Used in conjunction with the `_max_retries` and `_retry_after` parameters. |
 | _max_retries | Int | No | The maximum number of attempts to walk any given URI. Defaults to "1" and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
@@ -146,7 +173,7 @@ go build -mod vendor -o bin/emit cmd/emit/main.go
 
 ### count
 
-Count files in one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
+Count files in one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
 
 ```
 > ./bin/count -h
@@ -186,7 +213,7 @@ Publish features from one or more whosonfirst/go-whosonfirst-index/v2/emitter so
 
 ```
 > ./bin/emit -h
-Publish features from one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
+Publish features from one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
 Usage:
 	 ./bin/emit [options] uri(N) uri(N)
 Valid options are:

@@ -22,7 +22,7 @@ func DefaultFlagSet() *flag.FlagSet {
 	fs.StringVar(&iterator_uri, "iterator-uri", "repo://", iterator_desc)
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Count files in one or more whosonfirst/go-whosonfirst-iterate.Iterator sources.\n")
+		fmt.Fprintf(os.Stderr, "Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n\t %s [options] uri(N) uri(N)\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Valid options are:\n\n")
 		fs.PrintDefaults()

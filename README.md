@@ -81,52 +81,52 @@ func main() {
 
 TBW...
 
-## URIs and Schemes (for emitters)
+## URIs and Schemes (for iterators)
 
-The following emitters are supported by default:
+The following iterators are supported by default:
 
 ### cwd://
 
-`CwdEmitter` implements the `Emitter` interface for crawling records in the current working directory.
+`CwdIterator` implements the `Iterator` interface for crawling records in the current working directory.
 
 ### directory://
 
-`DirectoryEmitter` implements the `Emitter` interface for crawling records in a directory.
+`DirectoryIterator` implements the `Iterator` interface for crawling records in a directory.
 
 ### featurecollection://
 
-`FeatureCollectionEmitter` implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
+`FeatureCollectionIterator` implements the `Iterator` interface for crawling features in a GeoJSON FeatureCollection record.
 
 ### file://
 
-`FileEmitter` implements the `Emitter` interface for crawling individual file records.
+`FileIterator` implements the `Iterator` interface for crawling individual file records.
 
 ### filelist://
 
-`FileListEmitter` implements the `Emitter` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
+`FileListIterator` implements the `Iterator` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
 
 ### geojsonl://
 
-`GeojsonLEmitter` implements the `Emitter` interface for crawling features in a line-separated GeoJSON record.
+`GeojsonLIterator` implements the `Iterator` interface for crawling features in a line-separated GeoJSON record.
 
 ### null://
 
-`NullEmitter` implements the `Emitter` interface for appearing to crawl records but not doing anything.
+`NullIterator` implements the `Iterator` interface for appearing to crawl records but not doing anything.
 
 ### repo://
 
-`RepoEmitter` implements the `Emitter` interface for crawling records in a Who's On First style data directory.
+`RepoIterator` implements the `Iterator` interface for crawling records in a Who's On First style data directory.
 
 ## Query parameters
 
-The following query parameters are honoured by all `emitter.Emitter` instances:
+The following query parameters are honoured by all `iterate.Iterator` instances:
 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
 | include | String | No | One or more query filters (described below) to limit documents that will be processed. |
 | exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
 
-The following query paramters are honoured for `emitter.Emitter` URIs passed to the `iterator.NewIterator` method:
+The following query paramters are honoured for `iterate.Iterator` URIs passed to the `iterator.NewIterator` method:
 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
@@ -143,7 +143,7 @@ The following query paramters are honoured for `emitter.Emitter` URIs passed to 
 
 ### QueryFilters
 
-You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `emitter.Emitter` URI, where the value is a string in the format of:
+You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `iterate.Iterator` URI, where the value is a string in the format of:
 
 ```
 {PATH}={REGULAR EXPRESSION}
@@ -179,13 +179,13 @@ Count files in one or more whosonfirst/go-whosonfirst-iterate/v3 iterator source
 
 ```
 > ./bin/count -h
-Count files in one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
+Count files in one or more whosonfirst/go-whosonfirst-iterate/iterator sources.
 Usage:
 	 ./bin/count [options] uri(N) uri(N)
 Valid options are:
 
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterate/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
+  -iterator-uri string
+    	A valid whosonfirst/go-whosonfirst-iterate/iterator URI. Supported iterator URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
 ```
 
 For example:
@@ -202,7 +202,7 @@ Or:
 
 ```
 $> ./bin/count \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=terminal&include=properties.mz:is_current=1' \
+	-iterator-uri 'repo://?include=properties.sfomuseum:placetype=terminal&include=properties.mz:is_current=1' \
 	/usr/local/data/sfomuseum-data-architecture/
 	
 2021/02/17 14:09:18 time to index paths (1) 71.06355ms
@@ -211,7 +211,7 @@ $> ./bin/count \
 
 ### emit
 
-Publish features from one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
+Publish features from one or more whosonfirst/go-whosonfirst-index/v2/iterator sources.
 
 ```
 > ./bin/emit -h
@@ -220,8 +220,8 @@ Usage:
 	 ./bin/emit [options] uri(N) uri(N)
 Valid options are:
 
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterator/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
+  -iterator-uri string
+    	A valid whosonfirst/go-whosonfirst-iterator/iterator URI. Supported iterator URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
   -geojson
     	Emit features as a well-formed GeoJSON FeatureCollection record.
   -json
@@ -236,7 +236,7 @@ For example:
 
 ```
 $> ./bin/emit \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
+	-iterator-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
 	-geojson \	
 	/usr/local/data/sfomuseum-data-architecture/ \
 

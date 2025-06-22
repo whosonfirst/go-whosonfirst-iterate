@@ -20,25 +20,31 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-uri"
 )
 
+// ConcurrentIterator implements the `Iterator` interface wrapping an exiting
+// `Iterator` instance and performing additional file-matching checks and retry-on-error
+// handling.
 type ConcurrentIterator struct {
 	Iterator
 	iterator Iterator
-	// seen is the count of documents that have been processed.
+	// The count of documents that have been processed.
 	seen int64
-	// iterating is a boolean value indicating whether records are still being iterated.
+	// Boolean value indicating whether records are still being iterated.
 	iterating *atomic.Bool
-	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
+	// The number maximum (CPU) processes to used to process documents simultaneously.
 	max_procs int
-	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
+	// A `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
 	exclude_paths     *regexp.Regexp
+	// Exclude Who's On First style "alternate geometry" file paths.
 	exclude_alt_files bool
-	// include_paths is a `regexp.Regexp` instance used to test and include (if matching) the paths of documents as they are iterated through.
+	// A `regexp.Regexp` instance used to test and include (if matching) the paths of documents as they are iterated through.
 	include_paths *regexp.Regexp
+	// ...
 	max_attempts  int
+	// ...
 	retry_after   int
-	// skip records (specifically their relative URI) that have already been processed
+	// Skip records (specifically their relative URI) that have already been processed
 	dedupe bool
-	// lookup table to track records (specifically their relative URI) that have been processed
+	// Lookup table to track records (specifically their relative URI) that have been processed
 	dedupe_map *sync.Map
 }
 

@@ -56,10 +56,12 @@ func (it *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*R
 	return it.iterator.Iterate(ctx, cwd)
 }
 
+// Seen() returns the total number of records processed so far.
 func (it *CwdIterator) Seen() int64 {
 	return it.iterator.Seen()
 }
 
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 func (it *CwdIterator) IsIterating() bool {
 	return it.iterator.IsIterating()
 }

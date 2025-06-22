@@ -20,13 +20,13 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-uri"
 )
 
-type concurrentIterator struct {
+type ConcurrentIterator struct {
 	Iterator
 	iterator Iterator
 	// seen is the count of documents that have been seen (or emitted).
 	seen int64
-	// count is the current number of documents being processed used to signal where an `Iterator` instance is still indexing (processing) documents.
-	count int64
+	// ...
+	iterating *atomic.Bool
 	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
 	max_procs int
 	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
@@ -48,7 +48,7 @@ type concurrentIterator struct {
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
 // * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
-func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
+func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
 	u, err := url.Parse(iterator_uri)
 
@@ -111,10 +111,10 @@ func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 		}
 	}
 
-	i := &concurrentIterator{
+	i := &ConcurrentIterator{
 		iterator:     it,
-		seen:         0,
-		count:        0,
+		seen:         int64(0),
+		iterating:    new(atomic.Bool),
 		max_procs:    max_procs,
 		max_attempts: max_attempts,
 		retry_after:  retry_after,
@@ -171,7 +171,7 @@ func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 	return i, nil
 }
 
-func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
@@ -181,8 +181,8 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 			slog.Debug("Time to process paths", "count", len(uris), "time", time.Since(t1))
 		}()
 
-		it.increment()
-		defer it.decrement()
+		it.iterating.Swap(true)
+		defer it.iterating.Swap(false)
 
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
@@ -302,31 +302,16 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 }
 
 // Seen() returns the total number of records processed so far.
-func (it concurrentIterator) Seen() int64 {
+func (it ConcurrentIterator) Seen() int64 {
 	return atomic.LoadInt64(&it.seen)
 }
 
 // IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
-func (it concurrentIterator) IsIterating() bool {
-
-	if atomic.LoadInt64(&it.count) > 0 {
-		return true
-	}
-
-	return false
+func (it ConcurrentIterator) IsIterating() bool {
+	return it.iterating.Load()
 }
 
-// increment() increments the count of documents being processed.
-func (it concurrentIterator) increment() {
-	atomic.AddInt64(&it.count, 1)
-}
-
-// decrement() decrements the count of documents being processed.
-func (it concurrentIterator) decrement() {
-	atomic.AddInt64(&it.count, -1)
-}
-
-func (it concurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {
+func (it ConcurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {
 
 	if it.include_paths != nil {
 

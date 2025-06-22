@@ -29,10 +29,12 @@ func (it *NullIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*
 	return func(yield func(rec *Record, err error) bool) {}
 }
 
+// Seen() returns the total number of records processed so far.
 func (it *NullIterator) Seen() int64 {
 	return int64(0)
 }
 
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 func (it *NullIterator) IsIterator() bool {
 	return false
 }

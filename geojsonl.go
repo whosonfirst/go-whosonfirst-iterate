@@ -18,8 +18,8 @@ func init() {
 	RegisterIterator(ctx, "geojsonl", NewGeoJSONLIterator)
 }
 
-// GeojsonLIterator implements the `Iterator` interface for crawling features in a line-separated GeoJSON record.
-type GeojsonLIterator struct {
+// GeoJSONLIterator implements the `Iterator` interface for crawling features in a line-separated GeoJSON record.
+type GeoJSONLIterator struct {
 	Iterator
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
 	filters   filters.Filters
@@ -44,7 +44,7 @@ func NewGeoJSONLIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	it := &GeojsonLIterator{
+	it := &GeoJSONLIterator{
 		filters:   f,
 		seen:      int64(0),
 		iterating: new(atomic.Bool),
@@ -53,7 +53,7 @@ func NewGeoJSONLIterator(ctx context.Context, uri string) (Iterator, error) {
 	return it, nil
 }
 
-func (it *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *GeoJSONLIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
@@ -160,4 +160,14 @@ func (it *GeojsonLIterator) Iterate(ctx context.Context, uris ...string) iter.Se
 		}
 	}
 
+}
+
+// Seen() returns the total number of records processed so far.
+func (it *GeoJSONLIterator) Seen() int64 {
+	return atomic.LoadInt64(&it.seen)
+}
+
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
+func (it *GeoJSONLIterator) IsIterating() bool {
+	return it.iterating.Load()
 }

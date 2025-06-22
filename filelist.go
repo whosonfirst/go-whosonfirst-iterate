@@ -1,27 +1,23 @@
 package iterate
 
 import (
+	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"iter"
-	_ "log/slog"
-	"os"
 	"path/filepath"
-	"sync"
 	"sync/atomic"
 
-	"github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "directory", NewDirectoryIterator)
+	RegisterIterator(ctx, "filelist", NewFileListIterator)
 }
 
-// DirectoryIterator implements the `Iterator` interface for crawling records in a directory.
-type DirectoryIterator struct {
+// FileListIterator implements the `Iterator` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
+type FileListIterator struct {
 	Iterator
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
 	filters   filters.Filters
@@ -29,16 +25,16 @@ type DirectoryIterator struct {
 	iterating *atomic.Bool
 }
 
-// NewDirectoryIterator() returns a new `DirectoryIterator` instance configured by 'uri' in the form of:
+// NewFileListIterator() returns a new `FileListIterator` instance configured by 'uri' in the form of:
 //
-//	directory://?{PARAMETERS}
+//	file://?{PARAMETERS}
 //
 // Where {PARAMETERS} may be:
 // * `?include=` Zero or more `aaronland/go-json-query` query strings containing rules that must match for a document to be considered for further processing.
 // * `?exclude=` Zero or more `aaronland/go-json-query`	query strings containing rules that if matched will prevent a document from being considered for further processing.
 // * `?include_mode=` A valid `aaronland/go-json-query` query mode string for testing inclusion rules.
 // * `?exclude_mode=` A valid `aaronland/go-json-query` query mode string for testing exclusion rules.
-func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
+func NewFileListIterator(ctx context.Context, uri string) (Iterator, error) {
 
 	f, err := filters.NewQueryFiltersFromURI(ctx, uri)
 
@@ -46,7 +42,7 @@ func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, fmt.Errorf("Failed to create filters from query, %w", err)
 	}
 
-	it := &DirectoryIterator{
+	it := &FileListIterator{
 		filters:   f,
 		seen:      int64(0),
 		iterating: new(atomic.Bool),
@@ -55,7 +51,7 @@ func NewDirectoryIterator(ctx context.Context, uri string) (Iterator, error) {
 	return it, nil
 }
 
-func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
@@ -67,63 +63,81 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 			abs_path, err := filepath.Abs(uri)
 
 			if err != nil {
-				yield(nil, fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err))
+				if !yield(nil, fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err)) {
+					return
+				}
+
+				continue
 			}
 
-			mu := new(sync.RWMutex)
+			r, err := ReaderWithPath(ctx, abs_path)
 
-			crawl_cb := func(path string, info os.FileInfo) error {
+			if err != nil {
+				if !yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)) {
+					return
+				}
+
+				continue
+			}
+
+			defer r.Close()
+
+			scanner := bufio.NewScanner(r)
+
+			for scanner.Scan() {
 
 				select {
 				case <-ctx.Done():
-					return nil
+					break
 				default:
 					// pass
 				}
 
-				if info.IsDir() {
-					return nil
+				path := scanner.Text()
+
+				r2, err := ReaderWithPath(ctx, path)
+
+				if err != nil {
+					if !yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", path, err)) {
+						return
+					}
+
+					continue
 				}
 
 				atomic.AddInt64(&it.seen, 1)
 
-				r, err := ReaderWithPath(ctx, path)
-
-				if err != nil {
-					return fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)
-				}
-
 				if it.filters != nil {
 
-					ok, err := ApplyFilters(ctx, r, it.filters)
+					ok, err := ApplyFilters(ctx, r2, it.filters)
 
 					if err != nil {
-						r.Close()
-						return err
+
+						r2.Close()
+
+						if !yield(nil, fmt.Errorf("Failed to apply filters for '%s', %w", path, err)) {
+							return
+						}
+
+						continue
 					}
 
 					if !ok {
-						r.Close()
-						return nil
+						r2.Close()
+						continue
 					}
 				}
 
-				rec := NewRecord(path, r)
-
-				mu.Lock()
-				defer mu.Unlock()
+				rec := NewRecord(path, r2)
 
 				if !yield(rec, nil) {
-					return io.EOF
+					break
 				}
-
-				return nil
 			}
 
-			c := crawl.NewCrawler(abs_path)
-			err = c.Crawl(crawl_cb)
+			err = scanner.Err()
 
-			if err != nil && err != io.EOF {
+			if err != nil {
 				yield(nil, err)
 			}
 		}
@@ -131,11 +145,11 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 }
 
 // Seen() returns the total number of records processed so far.
-func (it *DirectoryIterator) Seen() int64 {
+func (it *FileListIterator) Seen() int64 {
 	return atomic.LoadInt64(&it.seen)
 }
 
 // IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
-func (it *DirectoryIterator) IsIterating() bool {
+func (it *FileListIterator) IsIterating() bool {
 	return it.iterating.Load()
 }

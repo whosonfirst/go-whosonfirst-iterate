@@ -65,10 +65,12 @@ func (it *RepoIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*
 	return it.iterator.Iterate(ctx, data_uris...)
 }
 
+// Seen() returns the total number of records processed so far.
 func (it *RepoIterator) Seen() int64 {
 	return it.iterator.Seen()
 }
 
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 func (it *RepoIterator) IsIterating() bool {
 	return it.iterator.IsIterating()
 }

@@ -4,23 +4,30 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"path/filepath"
 	"testing"
 )
 
-func TestCwdIterator(t *testing.T) {
+func TestFileIterator(t *testing.T) {
 
 	ctx := context.Background()
 
-	it, err := NewIterator(ctx, "cwd://")
+	abs_path, err := filepath.Abs("fixtures/data/151/183/838/5/1511838385.geojson")
 
 	if err != nil {
-		t.Fatalf("Failed to create new directory source, %v", err)
+		t.Fatalf("Failed to derive absolute path for fixtures, %v", err)
 	}
 
-	for rec, err := range it.Iterate(ctx, ".") {
+	it, err := NewIterator(ctx, "file://")
+
+	if err != nil {
+		t.Fatalf("Failed to create new file source, %v", err)
+	}
+
+	for rec, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {
-			t.Fatalf("Failed to walk working directory, %v", err)
+			t.Fatalf("Failed to walk '%s', %v", abs_path, err)
 			break
 		}
 
@@ -44,7 +51,7 @@ func TestCwdIterator(t *testing.T) {
 	}
 
 	seen := it.Seen()
-	expected := int64(283)
+	expected := int64(1)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

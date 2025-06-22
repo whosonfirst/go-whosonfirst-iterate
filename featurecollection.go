@@ -174,3 +174,13 @@ func (it *FeatureCollectionIterator) Iterate(ctx context.Context, uris ...string
 		}
 	}
 }
+
+// Seen() returns the total number of records processed so far.
+func (it *FeatureCollectionIterator) Seen() int64 {
+	return atomic.LoadInt64(&it.seen)
+}
+
+// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
+func (it *FeatureCollectionIterator) IsIterating() bool {
+	return it.iterating.Load()
+}

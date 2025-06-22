@@ -13,10 +13,11 @@ import (
 
 // Iterator defines an interface for iterating through collections  of Who's On First documents.
 type Iterator interface {
+	// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in one or more URIs.
 	Iterate(context.Context, ...string) iter.Seq2[*Record, error]
 	// Seen() returns the total number of records processed so far.
 	Seen() int64
-	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.	
+	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 	IsIterating() bool
 }
 

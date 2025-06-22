@@ -23,16 +23,16 @@ import (
 type ConcurrentIterator struct {
 	Iterator
 	iterator Iterator
-	// seen is the count of documents that have been seen (or emitted).
+	// seen is the count of documents that have been processed.
 	seen int64
-	// ...
+	// iterating is a boolean value indicating whether records are still being iterated.
 	iterating *atomic.Bool
 	// max_procs is the number maximum (CPU) processes to used to process documents simultaneously.
 	max_procs int
 	// exclude_paths is a `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
 	exclude_paths     *regexp.Regexp
 	exclude_alt_files bool
-	// ...
+	// include_paths is a `regexp.Regexp` instance used to test and include (if matching) the paths of documents as they are iterated through.
 	include_paths *regexp.Regexp
 	max_attempts  int
 	retry_after   int
@@ -42,12 +42,13 @@ type ConcurrentIterator struct {
 	dedupe_map *sync.Map
 }
 
-// NewIterator() returns a new `Iterator` instance derived from 'emitter_uri' and 'emitter_cb'. The former is expected
-// to be a valid `whosonfirst/go-whosonfirst-iterate/v2/emitter.Emitter` URI whose semantics are defined by the underlying
-// implementation of the `emitter.Emitter` interface. The following iterator-specific query parameters are also accepted:
+// NewConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
+// to be a valid `whosonfirst/go-whosonfirst-iterate/v3.Iterator` URI defined by the following parameters:
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
+// * `?_include=` A valid regular expresion used to test and include (if matching) the paths of documents as they are iterated through.
 // * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
+// These parameters will be used to wrap and perform additional checks when iterating through documents using 'it'.
 func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
 	u, err := url.Parse(iterator_uri)
@@ -171,6 +172,7 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 	return i, nil
 }
 
+// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {

@@ -13,15 +13,20 @@ import (
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "filelist", NewFileListIterator)
+	err := RegisterIterator(ctx, "filelist", NewFileListIterator)
+	if err != nil {
+		panic(err)
+	}
 }
 
 // FileListIterator implements the `Iterator` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
 type FileListIterator struct {
 	Iterator
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
-	filters   filters.Filters
-	seen      int64
+	filters filters.Filters
+	// seen is the count of documents that have been processed.
+	seen int64
+	// iterating is a boolean value indicating whether records are still being iterated.
 	iterating *atomic.Bool
 }
 
@@ -51,6 +56,7 @@ func NewFileListIterator(ctx context.Context, uri string) (Iterator, error) {
 	return it, nil
 }
 
+// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *FileListIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {

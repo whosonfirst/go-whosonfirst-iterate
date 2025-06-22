@@ -9,7 +9,11 @@ import (
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "cwd", NewCwdIterator)
+	err := RegisterIterator(ctx, "cwd", NewCwdIterator)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // CwdIterator implements the `Iterator` interface for crawling records in a Who's On First style data directory.
@@ -43,6 +47,7 @@ func NewCwdIterator(ctx context.Context, uri string) (Iterator, error) {
 	return it, nil
 }
 
+// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *CwdIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	cwd, err := os.Getwd()

@@ -7,6 +7,8 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
+// ApplyFilters is a convenience methods to test whether 'r' matches all the filters defined
+// by 'f' and also "rewinds" 'r' before returning.
 func ApplyFilters(ctx context.Context, r io.ReadSeeker, f filters.Filters) (bool, error) {
 
 	ok, err := f.Apply(ctx, r)

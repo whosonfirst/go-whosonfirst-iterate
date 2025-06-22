@@ -9,7 +9,11 @@ import (
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "repo", NewRepoIterator)
+	err := RegisterIterator(ctx, "repo", NewRepoIterator)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // RepoIterator implements the `Iterator` interface for crawling records in a Who's On First style data directory.
@@ -43,6 +47,7 @@ func NewRepoIterator(ctx context.Context, uri string) (Iterator, error) {
 	return it, nil
 }
 
+// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *RepoIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	data_uris := make([]string, len(uris))

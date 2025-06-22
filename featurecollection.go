@@ -15,15 +15,21 @@ import (
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "featurecollection", NewFeatureCollectionIterator)
+	err := RegisterIterator(ctx, "featurecollection", NewFeatureCollectionIterator)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // FeatureCollectionIterator implements the `Iterator` interface for crawling features in a GeoJSON FeatureCollection record.
 type FeatureCollectionIterator struct {
 	Iterator
 	// filters is a `filters.Filters` instance used to include or exclude specific records from being crawled.
-	filters   filters.Filters
-	seen      int64
+	filters filters.Filters
+	// seen is the count of documents that have been processed.
+	seen int64
+	// iterating is a boolean value indicating whether records are still being iterated.
 	iterating *atomic.Bool
 }
 
@@ -53,6 +59,7 @@ func NewFeatureCollectionIterator(ctx context.Context, uri string) (Iterator, er
 	return i, nil
 }
 
+// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *FeatureCollectionIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {

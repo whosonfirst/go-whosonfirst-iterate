@@ -44,7 +44,7 @@ func TestCwdIterator(t *testing.T) {
 	}
 
 	seen := it.Seen()
-	expected := int64(283)
+	expected := int64(311)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

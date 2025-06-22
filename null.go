@@ -7,7 +7,11 @@ import (
 
 func init() {
 	ctx := context.Background()
-	RegisterIterator(ctx, "null", NewNullIterator)
+	err := RegisterIterator(ctx, "null", NewNullIterator)
+
+	if err != nil {
+		panic(err)
+	}
 }
 
 // NullIterator implements the `Iterator` interface for appearing to crawl records but not doing anything.

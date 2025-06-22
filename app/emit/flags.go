@@ -12,6 +12,8 @@ import (
 
 var iterator_uri string
 
+// DefaultFlagSet returns a default `flag.FlagSet` for executing a command line application
+// to emitting records with a `go-whosonfirst-iterate/v3.Iterator` instance.
 func DefaultFlagSet() *flag.FlagSet {
 
 	fs := flagset.NewFlagSet("emit")

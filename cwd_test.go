@@ -9,6 +9,9 @@ import (
 
 func TestCwdIterator(t *testing.T) {
 
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.Debug("Verbose logging enabled")
+
 	ctx := context.Background()
 
 	it, err := NewIterator(ctx, "cwd://")

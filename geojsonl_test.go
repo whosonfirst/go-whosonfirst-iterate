@@ -10,6 +10,9 @@ import (
 
 func TestGeoJSONLSIterator(t *testing.T) {
 
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.Debug("Verbose logging enabled")
+
 	ctx := context.Background()
 
 	abs_path, err := filepath.Abs("fixtures/collection.geojsonl")

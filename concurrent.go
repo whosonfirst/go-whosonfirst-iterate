@@ -212,9 +212,13 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 			go func(uri string) {
 
+				logger := slog.Default()
+				logger = logger.With("uri", uri)
+
 				t2 := time.Now()
+
 				defer func() {
-					slog.Debug("Time to iterate uri", "uri", uri, "time", time.Since(t2))
+					logger.Debug("Time to iterate uri", "time", time.Since(t2))
 				}()
 
 				<-throttle
@@ -243,10 +247,12 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 					for rec, err := range it.iterator.Iterate(ctx, uri) {
 
 						if err != nil {
+							logger.Error("Iterator failed", "counter", it_counter, "local counter", local_counter, "error", err)
 							return err
 						}
 
-						if local_counter < it_counter {
+						if it_counter > local_counter {
+							logger.Debug("Local counter < counter, skipping", "counter", it_counter, "local counter", local_counter)
 							local_counter += 1
 							continue
 						}
@@ -285,6 +291,7 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 							continue
 						}
 
+						logger.Debug("Yield record", "counter", it_counter, "local counter", local_counter, "path", rec.Path)
 						rec_ch <- rec
 					}
 
@@ -293,16 +300,17 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 				for attempts < it.max_attempts {
 
+					attempts += 1
 					err := do_iter()
 
 					if err != nil {
+
+						logger.Error("Iterator failed", "attempts", attempts, "max attempts", it.max_attempts, "error", err)
 
 						if it.retry_after == 0 || attempts >= it.max_attempts {
 							err_ch <- err
 							break
 						}
-
-						attempts += 1
 
 						tts := it.retry_after * attempts
 						time.Sleep(time.Duration(tts) * time.Second)

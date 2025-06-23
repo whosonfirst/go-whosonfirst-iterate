@@ -10,6 +10,9 @@ import (
 
 func TestFileIterator(t *testing.T) {
 
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	slog.Debug("Verbose logging enabled")
+
 	ctx := context.Background()
 
 	abs_path, err := filepath.Abs("fixtures/data/151/183/838/5/1511838385.geojson")

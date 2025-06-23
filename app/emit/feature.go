@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sync"
+	// "sync"
 	"sync/atomic"
 
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
@@ -23,8 +23,6 @@ type FeatureEmitter struct {
 
 // Emit() will (re)publish all the documents emitted from an `Iterator` instance derived from 'iterator_uri' and 'uris'.
 func (pub *FeatureEmitter) Emit(ctx context.Context, iterator_uri string, uris ...string) (int64, error) {
-
-	mu := new(sync.RWMutex)
 
 	var count int64
 	var count_bytes int64
@@ -60,17 +58,6 @@ func (pub *FeatureEmitter) Emit(ctx context.Context, iterator_uri string, uris .
 		atomic.AddInt64(&count_bytes, int64(b))
 	}
 
-	if pub.AsGeoJSON || pub.AsJSON {
-
-		b, err := pub.Writer.Write([]byte(`]`))
-
-		if err != nil {
-			return atomic.LoadInt64(&count_bytes), fmt.Errorf("Failed to close JSON array, %w", err)
-		}
-
-		atomic.AddInt64(&count_bytes, int64(b))
-	}
-
 	for rec, err := range it.Iterate(ctx, uris...) {
 
 		select {
@@ -83,9 +70,6 @@ func (pub *FeatureEmitter) Emit(ctx context.Context, iterator_uri string, uris .
 		if err != nil {
 			return atomic.LoadInt64(&count_bytes), err
 		}
-
-		mu.Lock()
-		defer mu.Unlock()
 
 		atomic.AddInt64(&count, 1)
 
@@ -106,6 +90,17 @@ func (pub *FeatureEmitter) Emit(ctx context.Context, iterator_uri string, uris .
 
 		if err != nil {
 			return atomic.LoadInt64(&count_bytes), fmt.Errorf("Failed to copy data from %s, %w", rec.Path, err)
+		}
+
+		atomic.AddInt64(&count_bytes, int64(b))
+	}
+
+	if pub.AsGeoJSON || pub.AsJSON {
+
+		b, err := pub.Writer.Write([]byte(`]`))
+
+		if err != nil {
+			return atomic.LoadInt64(&count_bytes), fmt.Errorf("Failed to close JSON array, %w", err)
 		}
 
 		atomic.AddInt64(&count_bytes, int64(b))

@@ -9,10 +9,8 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	// "sync"
 	"sync/atomic"
 
-	// "github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
@@ -96,8 +94,6 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 
 				continue
 			}
-
-			//			mu := new(sync.RWMutex)
 
 			root_fs := root.FS()
 

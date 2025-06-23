@@ -226,27 +226,13 @@ Valid options are:
 For example:
 
 ```
-$> ./bin/count \
-	/usr/local/data/sfomuseum-data-architecture/
-
-2021/02/17 14:07:01 time to index paths (1) 87.908997ms
-2021/02/17 14:07:01 Counted 1072 records (1072) in 88.045771ms
-```
-
-Or:
-
-```
-$> ./bin/count \
-	-iterator-uri 'repo://?include=properties.sfomuseum:placetype=terminal&include=properties.mz:is_current=1' \
-	/usr/local/data/sfomuseum-data-architecture/
-	
-2021/02/17 14:09:18 time to index paths (1) 71.06355ms
-2021/02/17 14:09:18 Counted 4 records (4) in 71.184227ms
+$> ./bin/count fixtures
+2025/06/23 08:26:59 INFO Counted records count=37 time=9.216979ms
 ```
 
 ### emit
 
-Publish features from one or more whosonfirst/go-whosonfirst-index/v2/iterator sources.
+Publish features from one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
 
 ```
 $> ./bin/emit -h
@@ -273,17 +259,20 @@ For example:
 $> ./bin/emit \
 	-iterator-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
 	-geojson \	
-	/usr/local/data/sfomuseum-data-architecture/ \
+	fixtures \
 
 | jq '.features[]["properties"]["wof:id"]'
 
-1729813675
-1477855937
-1360521563
-1360521569
-1360521565
-1360521571
-1159157863
+1360391311
+1360391313
+1360391315
+1360391317
+1360391321
+1360391323
+1360391325
+1360391327
+1360391329
+...and so on
 ```
 
 ## Notes about writing your own `iterate.Iterator` implementation.
@@ -295,14 +284,6 @@ Importantly, it also takes care of automatically closing any `Record.Body` insta
 As a consequence you should _not_ automatically close `Record.Body` instances in your own code using the common `defer rec.Body.Close()` idiom. This is unfortunate because it makes ensuring that those instances are closed after they are opened but, for whatever reasons, not scheduled to be yielded. This is a by-product of the way that Go `yield` functions work and the extra work to ensure that filehandles are closed (when not being yielded) is just the "cost of doing business" I guess.
 
 _And yes, I did try using Go 1.24's `runtime.AddCleanup` but because it execute as part of the runtime.GC process it often gets triggered after the *Record instance has been purged without closing the underlying file handle. Basically what we need is a Python-style object level destructor but those don't exist yet so, again, here we are._
-
-## Version
-
-## v3
-
-## v2
-
-Version `2.x` of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
 
 ## Related
 

@@ -3,7 +3,9 @@ package iterate
 import (
 	"context"
 	"io"
+	"io/fs"
 	"log/slog"
+	"os"
 	"testing"
 )
 
@@ -11,6 +13,35 @@ func TestCwdIterator(t *testing.T) {
 
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	slog.Debug("Verbose logging enabled")
+
+	expected := int64(0)
+
+	cwd, err := os.Getwd()
+
+	if err != nil {
+		t.Fatalf("Failed to derive working directory, %v", err)
+	}
+
+	root, err := os.OpenRoot(cwd)
+
+	if err != nil {
+		t.Fatalf("Failed to open root, %v", err)
+	}
+
+	root_fs := root.FS()
+
+	fs.WalkDir(root_fs, ".", func(path string, d fs.DirEntry, err error) error {
+
+		if err != nil {
+			t.Fatalf("Failed to walk root dir, %v", err)
+		}
+
+		if !d.IsDir() {
+			expected += 1
+		}
+
+		return nil
+	})
 
 	ctx := context.Background()
 
@@ -47,7 +78,6 @@ func TestCwdIterator(t *testing.T) {
 	}
 
 	seen := it.Seen()
-	expected := int64(311)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

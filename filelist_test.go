@@ -10,8 +10,10 @@ import (
 
 func TestFileListIterator(t *testing.T) {
 
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-	slog.Debug("Verbose logging enabled")
+	if *tests_verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+		slog.Debug("Verbose logging enabled")
+	}
 
 	ctx := context.Background()
 

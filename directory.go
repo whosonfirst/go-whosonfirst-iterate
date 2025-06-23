@@ -4,14 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"iter"
-	_ "log/slog"
+	"log/slog"
 	"os"
 	"path/filepath"
-	"sync"
+	// "sync"
 	"sync/atomic"
 
-	"github.com/whosonfirst/go-whosonfirst-crawl"
+	// "github.com/whosonfirst/go-whosonfirst-crawl"
 	"github.com/whosonfirst/go-whosonfirst-iterate/v3/filters"
 )
 
@@ -71,15 +72,36 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 
 		for _, uri := range uris {
 
+			logger := slog.Default()
+			logger = logger.With("uri", uri)
+
 			abs_path, err := filepath.Abs(uri)
 
 			if err != nil {
-				yield(nil, fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err))
+				if !yield(nil, fmt.Errorf("Failed to derive absolute path for '%s', %w", uri, err)) {
+					return
+				}
+
+				continue
 			}
 
-			mu := new(sync.RWMutex)
+			logger = logger.With("path", abs_path)
+			root, err := os.OpenRoot(abs_path)
 
-			crawl_cb := func(path string, info os.FileInfo) error {
+			if err != nil {
+				logger.Error("Failed to open root", "error", err)
+				if !yield(nil, fmt.Errorf("Failed to open root for '%s', %w", abs_path, err)) {
+					return
+				}
+
+				continue
+			}
+
+			//			mu := new(sync.RWMutex)
+
+			root_fs := root.FS()
+
+			err = fs.WalkDir(root_fs, ".", func(path string, d fs.DirEntry, err error) error {
 
 				select {
 				case <-ctx.Done():
@@ -88,50 +110,43 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 					// pass
 				}
 
-				if info.IsDir() {
+				if err != nil {
+
+					if !yield(nil, err) {
+						return err
+					}
+
+					return nil
+				}
+
+				if d.IsDir() {
 					return nil
 				}
 
 				atomic.AddInt64(&it.seen, 1)
 
-				r, err := ReaderWithPath(ctx, path)
+				r, err := root.Open(path)
 
 				if err != nil {
-					return fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)
-				}
 
-				if it.filters != nil {
-
-					ok, err := ApplyFilters(ctx, r, it.filters)
-
-					if err != nil {
-						r.Close()
+					if !yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)) {
 						return err
 					}
 
-					if !ok {
-						r.Close()
-						return nil
-					}
+					return nil
 				}
 
 				rec := NewRecord(path, r)
-
-				mu.Lock()
-				defer mu.Unlock()
 
 				if !yield(rec, nil) {
 					return io.EOF
 				}
 
 				return nil
-			}
-
-			c := crawl.NewCrawler(abs_path)
-			err = c.Crawl(crawl_cb)
+			})
 
 			if err != nil && err != io.EOF {
-				yield(nil, err)
+				logger.Error("Failed to walk dir", "error", err)
 			}
 		}
 	}

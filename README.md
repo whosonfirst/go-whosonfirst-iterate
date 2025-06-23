@@ -250,15 +250,15 @@ Publish features from one or more whosonfirst/go-whosonfirst-index/v2/iterator s
 
 ```
 $> ./bin/emit -h
-Publish features from one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
+Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
 Usage:
 	 ./bin/emit [options] uri(N) uri(N)
 Valid options are:
 
-  -iterator-uri string
-    	A valid whosonfirst/go-whosonfirst-iterator/iterator URI. Supported iterator URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
   -geojson
     	Emit features as a well-formed GeoJSON FeatureCollection record.
+  -iterator-uri string
+    	A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: cwd://,directory://,featurecollection://,file://,filelist://,geojsonl://,null://,repo:// (default "repo://")
   -json
     	Emit features as a well-formed JSON array.
   -null

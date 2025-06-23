@@ -84,7 +84,7 @@ func NewIterator(ctx context.Context, uri string) (Iterator, error) {
 		return nil, err
 	}
 
-	return NewConcurrentIterator(ctx, uri, it)
+	return newConcurrentIterator(ctx, uri, it)
 }
 
 // IteratorSchemes() returns the list of schemes that have been "registered".

@@ -3,11 +3,11 @@ package emit
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 
 	"github.com/sfomuseum/go-flags/flagset"
-	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
 )
 
 // Run will execute a command line application for emittingrecords with a `go-whosonfirst-iterate/v3.Iterator`
@@ -23,25 +23,30 @@ func RunWithFlagSet(ctx context.Context, fs *flag.FlagSet) error {
 
 	flagset.Parse(fs)
 
-	paths := fs.Args()
+	writers := make([]io.Writer, 0)
 
-	iter, err := iterate.NewIterator(ctx, iterator_uri)
-
-	if err != nil {
-		return err
+	if to_stdout {
+		writers = append(writers, os.Stdout)
 	}
 
-	for rec, err := range iter.Iterate(ctx, paths...) {
+	if to_devnull {
+		writers = append(writers, io.Discard)
+	}
 
-		if err != nil {
-			return err
-		}
+	wr := io.MultiWriter(writers...)
 
-		_, err = io.Copy(os.Stdout, rec.Body)
+	em := &FeatureEmitter{
+		AsJSON:    as_json,
+		AsGeoJSON: as_geojson,
+		Writer:    wr,
+	}
 
-		if err != nil {
-			return err
-		}
+	uris := fs.Args()
+
+	_, err := em.Emit(ctx, iterator_uri, uris...)
+
+	if err != nil {
+		return fmt.Errorf("Failed to emit records, %w", err)
 	}
 
 	return nil

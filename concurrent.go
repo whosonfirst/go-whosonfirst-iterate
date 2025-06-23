@@ -20,10 +20,10 @@ import (
 	"github.com/whosonfirst/go-whosonfirst-uri"
 )
 
-// ConcurrentIterator implements the `Iterator` interface wrapping an exiting
+// concurrentIterator implements the `Iterator` interface wrapping an exiting
 // `Iterator` instance and performing additional file-matching checks and retry-on-error
 // handling.
-type ConcurrentIterator struct {
+type concurrentIterator struct {
 	Iterator
 	iterator Iterator
 	// The count of documents that have been processed.
@@ -48,14 +48,18 @@ type ConcurrentIterator struct {
 	dedupe_map *sync.Map
 }
 
-// NewConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
+// newConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
 // to be a valid `whosonfirst/go-whosonfirst-iterate/v3.Iterator` URI defined by the following parameters:
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
+// * `?_exclude_alt_files= A boolean value indicating whether Who's On First style "alternate geometry" file paths should be excluded. (Default is false.)
 // * `?_include=` A valid regular expresion used to test and include (if matching) the paths of documents as they are iterated through.
 // * `?_dedupe=` A boolean value to track and skip records (specifically their relative URI) that have already been processed.
+// * `?_retry=` A boolean value indicating whether failed iterators should be retried. (Default is false.)
+// * `?_max_attempts=` The number of times to retry a failed iterator. (Default is 1.)
+// * `?_retry_after=` The number of seconds to wait before retrying a failed iterator. (Default is 10.)
 // These parameters will be used to wrap and perform additional checks when iterating through documents using 'it'.
-func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
+func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
 	u, err := url.Parse(iterator_uri)
 
@@ -118,7 +122,7 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 		}
 	}
 
-	i := &ConcurrentIterator{
+	i := &concurrentIterator{
 		iterator:     it,
 		seen:         int64(0),
 		iterating:    new(atomic.Bool),
@@ -179,7 +183,7 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 }
 
 // Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
-func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
+func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
@@ -354,16 +358,16 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 }
 
 // Seen() returns the total number of records processed so far.
-func (it ConcurrentIterator) Seen() int64 {
+func (it concurrentIterator) Seen() int64 {
 	return atomic.LoadInt64(&it.seen)
 }
 
 // IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
-func (it ConcurrentIterator) IsIterating() bool {
+func (it concurrentIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
 
-func (it ConcurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {
+func (it concurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {
 
 	if it.include_paths != nil {
 

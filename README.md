@@ -77,13 +77,48 @@ func main() {
 }
 ```
 
-## Concepts
+## Iterators
 
-TBW...
+Iterators are defined as a standalone packages implementing the `Iterator` interface:
 
-## URIs and Schemes (for iterators)
+```
+// Iterator defines an interface for iterating through collections  of Who's On First documents.
+type Iterator interface {
+	// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in one or more URIs.
+	Iterate(context.Context, ...string) iter.Seq2[*Record, error]
+	// Seen() returns the total number of records processed so far.
+	Seen() int64
+	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
+	IsIterating() bool
+}
+```
 
-The following iterators are supported by default:
+Then, at the package level, they are "registered" with the `iterate` package so that they can be invoked using a simple declarative URI syntax. For example:
+
+```
+func init() {
+	ctx := context.Background()
+	err := RegisterIterator(ctx, "cwd", NewCwdIterator)
+
+	if err != nil {
+		panic(err)
+	}
+}
+```
+
+And then:
+
+```
+it, err := iterate.NewIterator(ctx, "cwd://")
+```
+
+Importantly, `Iterator` implementations that are "registered" are wrapped in a second (internal) `Iterator` implementation that provides for concurrent processing, retries and regular-expression based file inclusion and exclusion rules. These criteria are defined using query parameters appended to the initial iterator URI that are prefixed with an "_" character. For example:
+
+```
+it, err := iterate.NewIterator(ctx, "cwd://?_exclude=.*\.txt$")
+```
+
+The following iterators schemes are supported by default:
 
 ### cwd://
 
@@ -178,14 +213,14 @@ go build -mod vendor -o bin/emit cmd/emit/main.go
 Count files in one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
 
 ```
-> ./bin/count -h
-Count files in one or more whosonfirst/go-whosonfirst-iterate/iterator sources.
+$> ./bin/count -h
+Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
 Usage:
 	 ./bin/count [options] uri(N) uri(N)
 Valid options are:
 
   -iterator-uri string
-    	A valid whosonfirst/go-whosonfirst-iterate/iterator URI. Supported iterator URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
+    	A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: cwd://,directory://,featurecollection://,file://,filelist://,geojsonl://,null://,repo:// (default "repo://")
 ```
 
 For example:
@@ -214,7 +249,7 @@ $> ./bin/count \
 Publish features from one or more whosonfirst/go-whosonfirst-index/v2/iterator sources.
 
 ```
-> ./bin/emit -h
+$> ./bin/emit -h
 Publish features from one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
 Usage:
 	 ./bin/emit [options] uri(N) uri(N)

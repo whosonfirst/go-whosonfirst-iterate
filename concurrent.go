@@ -33,15 +33,15 @@ type ConcurrentIterator struct {
 	// The number maximum (CPU) processes to used to process documents simultaneously.
 	max_procs int
 	// A `regexp.Regexp` instance used to test and exclude (if matching) the paths of documents as they are iterated through.
-	exclude_paths     *regexp.Regexp
+	exclude_paths *regexp.Regexp
 	// Exclude Who's On First style "alternate geometry" file paths.
 	exclude_alt_files bool
 	// A `regexp.Regexp` instance used to test and include (if matching) the paths of documents as they are iterated through.
 	include_paths *regexp.Regexp
-	// ...
-	max_attempts  int
-	// ...
-	retry_after   int
+	// The maximum numbers of attempts to iterate a source. Default is 1.
+	max_attempts int
+	// The number of seconds to wait between retry attempts. Default is 10.
+	retry_after int
 	// Skip records (specifically their relative URI) that have already been processed
 	dedupe bool
 	// Lookup table to track records (specifically their relative URI) that have been processed
@@ -231,46 +231,82 @@ func (it *ConcurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 					// pass
 				}
 
-				for rec, err := range it.iterator.Iterate(ctx, uri) {
+				// The number of records processed across all attempts (it.max_attempts)
+				it_counter := int64(0)
+				attempts := 0
+
+				do_iter := func() error {
+
+					// The number of records processed in this attempt
+					local_counter := int64(1)
+
+					for rec, err := range it.iterator.Iterate(ctx, uri) {
+
+						if err != nil {
+							return err
+						}
+
+						if local_counter < it_counter {
+							local_counter += 1
+							continue
+						}
+
+						local_counter += 1
+						it_counter += 1
+
+						atomic.AddInt64(&it.seen, 1)
+
+						// Notes about automatically closing rec.Body
+						// It would be nice to be able to just use the common
+						// defer rec.Body.Close() here but the mechanics of
+						// the way yield functions works means we need to do
+						// after the yield function. This happens below in the
+						// unsurprisingly named `do_yield` function. What all
+						// of this means is that we need to be more attentive
+						// than usual about closing filehandles, when necessary,
+						// before the *Record instance is yield-ed. I guess this
+						// is just the price of using iterators for the time
+						// being. And yes, I did try using runtime.AddCleanup
+						// but because it execute as part of the runtime.GC process
+						// it often gets triggered after the *Record instance
+						// has been purged without closing the underlying file
+						// handle. Basically what we need is a Python-style object
+						// level destructor but those don't exist yet so, again,
+						// here we are.
+
+						ok, err := it.shouldYieldRecord(ctx, rec)
+
+						if err != nil {
+							continue
+						}
+
+						if !ok {
+							rec.Body.Close()
+							continue
+						}
+
+						rec_ch <- rec
+					}
+
+					return nil
+				}
+
+				for attempts < it.max_attempts {
+
+					err := do_iter()
 
 					if err != nil {
-						err_ch <- err
-						continue
+
+						if it.retry_after == 0 || attempts >= it.max_attempts {
+							err_ch <- err
+							break
+						}
+
+						attempts += 1
+
+						tts := it.retry_after * attempts
+						time.Sleep(time.Duration(tts) * time.Second)
 					}
-
-					atomic.AddInt64(&it.seen, 1)
-
-					// Notes about automatically closing rec.Body
-					// It would be nice to be able to just use the common
-					// defer rec.Body.Close() here but the mechanics of
-					// the way yield functions works means we need to do
-					// after the yield function. This happens below in the
-					// unsurprisingly named `do_yield` function. What all
-					// of this means is that we need to be more attentive
-					// than usual about closing filehandles, when necessary,
-					// before the *Record instance is yield-ed. I guess this
-					// is just the price of using iterators for the time
-					// being. And yes, I did try using runtime.AddCleanup
-					// but because it execute as part of the runtime.GC process
-					// it often gets triggered after the *Record instance
-					// has been purged without closing the underlying file
-					// handle. Basically what we need is a Python-style object
-					// level destructor but those don't exist yet so, again,
-					// here we are.
-
-					ok, err := it.shouldYieldRecord(ctx, rec)
-
-					if err != nil {
-						err_ch <- err
-						continue
-					}
-
-					if !ok {
-						rec.Body.Close()
-						continue
-					}
-
-					rec_ch <- rec
 				}
 
 			}(uri)

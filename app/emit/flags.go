@@ -36,7 +36,7 @@ func DefaultFlagSet() *flag.FlagSet {
 	fs.BoolVar(&to_devnull, "null", false, "Publish features to /dev/null")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.\n")
+		fmt.Fprintf(os.Stderr, "Emit records in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources as structured data.\n")
 		fmt.Fprintf(os.Stderr, "Usage:\n\t %s [options] uri(N) uri(N)\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Valid options are:\n\n")
 		fs.PrintDefaults()

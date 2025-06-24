@@ -232,11 +232,11 @@ $> ./bin/count fixtures
 
 ### emit
 
-Publish features from one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
+Emit records in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources as structured data.
 
 ```
 $> ./bin/emit -h
-Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
+Emit records in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources as structured data.
 Usage:
 	 ./bin/emit [options] uri(N) uri(N)
 Valid options are:

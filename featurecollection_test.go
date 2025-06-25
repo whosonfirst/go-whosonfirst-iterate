@@ -36,6 +36,7 @@ func TestFeatureCollectionIterator(t *testing.T) {
 			break
 		}
 
+		defer rec.Body.Close()
 		_, err = io.ReadAll(rec.Body)
 
 		if err != nil {

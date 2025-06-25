@@ -33,6 +33,7 @@ func main() {
 	paths := flag.Args()
 	
 	for rec, _ := range iter.Iterate(ctx, paths...) {
+	    	defer rec.Body.Close()
 		log.Printf("Indexing %s\n", rec.Path)
 	}
 }
@@ -167,6 +168,7 @@ func main() {
 	iter, _:= iterate.NewFSIterator(ctx, iterator_uri, fs)
 
 	for rec, _ := range iter.Iterate(ctx, ".") {
+	    	defer rec.Body.Close()
 		log.Printf("Indexing %s\n", rec.Path)
 	}
 }

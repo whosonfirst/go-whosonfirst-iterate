@@ -324,32 +324,17 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 			}(uri)
 		}
 
-		do_yield := func(rec *Record, err error) bool {
-
-			// This bit is important. See notes above.
-
-			// https://go.dev/blog/range-functions
-			
-			if rec != nil {
-				defer func() {
-					// slog.Info("Close record", "path", rec.Path)
-					// rec.Body.Close()
-				}()
-			}
-
-			return yield(rec, err)
-		}
-
 		for remaining > 0 {
 			select {
 			case <-done_ch:
 				remaining -= 1
 			case err := <-err_ch:
-				do_yield(nil, err)
-				return
-			case rec := <-rec_ch:
-				if !do_yield(rec, nil) {
+				if !yield(nil, err){
 					return
+				}
+			case rec := <-rec_ch:
+				if !yield(rec, nil){
+				   return
 				}
 			default:
 				// pass

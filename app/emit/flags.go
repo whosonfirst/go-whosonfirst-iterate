@@ -11,6 +11,7 @@ import (
 )
 
 var iterator_uri string
+var verbose bool
 
 var as_json bool
 var as_geojson bool
@@ -28,6 +29,7 @@ func DefaultFlagSet() *flag.FlagSet {
 	iterator_desc := fmt.Sprintf("A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: %s", valid_schemes)
 
 	fs.StringVar(&iterator_uri, "iterator-uri", "repo://", iterator_desc)
+	fs.BoolVar(&verbose, "verbose", false, "Enable verbose (debug) logging.")
 
 	fs.BoolVar(&as_json, "json", false, "Emit features as a well-formed JSON array.")
 	fs.BoolVar(&as_geojson, "geojson", false, "Emit features as a well-formed GeoJSON FeatureCollection record.")

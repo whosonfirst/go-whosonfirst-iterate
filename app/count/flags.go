@@ -11,6 +11,7 @@ import (
 )
 
 var iterator_uri string
+var verbose bool
 
 // DefaultFlagSet returns a default `flag.FlagSet` for executing a command line application
 // to count records with a `go-whosonfirst-iterate/v3.Iterator` instance.
@@ -22,6 +23,7 @@ func DefaultFlagSet() *flag.FlagSet {
 	iterator_desc := fmt.Sprintf("A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: %s", valid_schemes)
 
 	fs.StringVar(&iterator_uri, "iterator-uri", "repo://", iterator_desc)
+	fs.BoolVar(&verbose, "verbose", false, "Enable verbose (debug) logging.")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.\n")

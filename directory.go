@@ -125,11 +125,32 @@ func (it *DirectoryIterator) Iterate(ctx context.Context, uris ...string) iter.S
 
 				if err != nil {
 
+					r.Close()
+
 					if !yield(nil, fmt.Errorf("Failed to create reader for '%s', %w", abs_path, err)) {
 						return err
 					}
 
 					return nil
+				}
+
+				if it.filters != nil {
+
+					ok, err := ApplyFilters(ctx, r, it.filters)
+
+					if err != nil {
+						r.Close()
+						if !yield(nil, fmt.Errorf("Failed to apply filters for '%s', %w", path, err)) {
+							return err
+						}
+
+						return nil
+					}
+
+					if !ok {
+						r.Close()
+						return nil
+					}
 				}
 
 				rec := NewRecord(path, r)

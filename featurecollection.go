@@ -143,7 +143,7 @@ func (it *FeatureCollectionIterator) Iterate(ctx context.Context, uris ...string
 
 				if it.filters != nil {
 
-					ok, err := it.filters.Apply(ctx, rsc)
+					ok, err := ApplyFilters(ctx, rsc, it.filters)
 
 					if err != nil {
 						rsc.Close()
@@ -156,17 +156,6 @@ func (it *FeatureCollectionIterator) Iterate(ctx context.Context, uris ...string
 
 					if !ok {
 						rsc.Close()
-						continue
-					}
-
-					_, err = rsc.Seek(0, 0)
-
-					if err != nil {
-						rsc.Close()
-						if !yield(nil, fmt.Errorf("Failed to seek(0, 0) for '%s', %w", path, err)) {
-							return
-						}
-
 						continue
 					}
 				}

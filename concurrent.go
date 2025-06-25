@@ -48,7 +48,7 @@ type concurrentIterator struct {
 	dedupe_map *sync.Map
 }
 
-// newConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
+// NewConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
 // to be a valid `whosonfirst/go-whosonfirst-iterate/v3.Iterator` URI defined by the following parameters:
 // * `?_max_procs=` Explicitly set the number maximum processes to use for iterating documents simultaneously. (Default is the value of `runtime.NumCPU()`.)
 // * `?_exclude=` A valid regular expresion used to test and exclude (if matching) the paths of documents as they are iterated through.
@@ -59,7 +59,7 @@ type concurrentIterator struct {
 // * `?_max_attempts=` The number of times to retry a failed iterator. (Default is 1.)
 // * `?_retry_after=` The number of seconds to wait before retrying a failed iterator. (Default is 10.)
 // These parameters will be used to wrap and perform additional checks when iterating through documents using 'it'.
-func newConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
+func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
 	u, err := url.Parse(iterator_uri)
 

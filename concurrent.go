@@ -328,10 +328,12 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 			// This bit is important. See notes above.
 
+			// https://go.dev/blog/range-functions
+			
 			if rec != nil {
 				defer func() {
-					slog.Debug("Close record", "path", rec.Path)
-					rec.Body.Close()
+					// slog.Info("Close record", "path", rec.Path)
+					// rec.Body.Close()
 				}()
 			}
 

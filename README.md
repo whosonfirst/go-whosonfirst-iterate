@@ -140,6 +140,43 @@ The following iterators schemes are supported by default:
 
 `FileListIterator` implements the `Iterator` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
 
+### fs://
+
+`FSIterator` implements the `Iterator` interface for crawling records listed in a `fs.FS` instance. For example:
+
+```
+import (
+	"context"
+	"flag"
+	"io/fs"	
+	"log"
+	
+	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
+)
+
+func main() {
+
+     	var iterator_uri string
+
+	flag.StringVar(&iterator_uri, "iterator-uri", "fs://". "A registered whosonfirst/go-whosonfirst-iterate/v3.Iterator URI.")
+	ctx := context.Background()
+
+	// Your fs.FS goes here
+	var your_fs fs.FS
+	
+	iter, _:= iterate.NewFSIterator(ctx, iterator_uri, fs)
+
+	for rec, _ := range iter.Iterate(ctx, ".") {
+		log.Printf("Indexing %s\n", rec.Path)
+	}
+}
+```
+
+Notes:
+
+* The `go-whosonfirst-iterate-fs/v3` implementation does NOT register itself with the `whosonfirst/go-whosonfirst-iterate.RegisterIterator` method and is NOT instantiated using the `whosonfirst/go-whosonfirst-iterate.NewIterator` method since `fs.FS` instances can not be defined as URI constructs.
+* Under the hood the `NewFSIterator` is wrapping a `FSIterator` instance in a `whosonfirst/go-whosonfirst-iterate.concrurrentIterator` instance to provide for throttling, filtering and other common (configurable) operations.
+
 ### geojsonl://
 
 `GeojsonLIterator` implements the `Iterator` interface for crawling features in a line-separated GeoJSON record.
@@ -151,6 +188,7 @@ The following iterators schemes are supported by default:
 ### repo://
 
 `RepoIterator` implements the `Iterator` interface for crawling records in a Who's On First style data directory.
+
 
 ## Query parameters
 

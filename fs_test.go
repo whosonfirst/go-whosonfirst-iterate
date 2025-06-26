@@ -18,7 +18,6 @@ func TestFSIterator(t *testing.T) {
 		t.Fatalf("Failed to create FS emitter, %v", err)
 	}
 
-	defer it.Close()
 	count := 0
 
 	for rec, err := range it.Iterate(ctx, ".") {
@@ -54,6 +53,10 @@ func TestFSIterator(t *testing.T) {
 
 	if count != expected {
 		t.Fatalf("Expected %d records, but counted %d", expected, count)
+	}
+
+	if err != nil {
+		t.Fatalf("Failed to close iterator")
 	}
 
 }

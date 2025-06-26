@@ -29,8 +29,6 @@ func TestFileIterator(t *testing.T) {
 		t.Fatalf("Failed to create new file source, %v", err)
 	}
 
-	defer it.Close()
-
 	for rec, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {
@@ -65,5 +63,10 @@ func TestFileIterator(t *testing.T) {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)
 	}
 
-	slog.Info("Records seen", "count", seen)
+	err = it.Close()
+
+	if err != nil {
+		t.Fatalf("Failed to close iterator")
+	}
+
 }

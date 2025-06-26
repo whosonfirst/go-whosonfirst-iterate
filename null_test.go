@@ -28,8 +28,6 @@ func TestNullIterator(t *testing.T) {
 		t.Fatalf("Failed to create new null source, %v", err)
 	}
 
-	defer it.Close()
-
 	for _, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {
@@ -47,5 +45,7 @@ func TestNullIterator(t *testing.T) {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)
 	}
 
-	slog.Info("Records seen", "count", seen)
+	if err != nil {
+		t.Fatalf("Failed to close iterator")
+	}
 }

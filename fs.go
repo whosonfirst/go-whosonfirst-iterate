@@ -30,7 +30,7 @@ type FSIterator struct {
 //
 //	fs://?{PARAMETERS}
 //
-// Where {ENGINE} is a registered `database/sql` driver and {PARAMETERS} may be:
+// Where {PARAMETERS} may be:
 // * `?include=` Zero or more `aaronland/go-json-query` query strings containing rules that must match for a document to be considered for further processing.
 // * `?exclude=` Zero or more `aaronland/go-json-query`	query strings containing rules that if matched will prevent a document from being considered for further processing.
 // * `?include_mode=` A valid `aaronland/go-json-query` query mode string for testing inclusion rules.

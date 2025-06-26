@@ -169,3 +169,8 @@ func (it *GeoJSONLIterator) Seen() int64 {
 func (it *GeoJSONLIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *GeoJSONLIterator) Close() error {
+	return nil
+}

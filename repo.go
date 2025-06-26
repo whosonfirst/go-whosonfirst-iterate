@@ -79,3 +79,8 @@ func (it *RepoIterator) Seen() int64 {
 func (it *RepoIterator) IsIterating() bool {
 	return it.iterator.IsIterating()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *RepoIterator) Close() error {
+	return it.iterator.Close()
+}

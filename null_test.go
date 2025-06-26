@@ -28,6 +28,8 @@ func TestNullIterator(t *testing.T) {
 		t.Fatalf("Failed to create new null source, %v", err)
 	}
 
+	defer it.Close()
+
 	for _, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {

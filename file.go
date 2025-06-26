@@ -117,3 +117,8 @@ func (it *FileIterator) Seen() int64 {
 func (it *FileIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *FileIterator) Close() error {
+	return nil
+}

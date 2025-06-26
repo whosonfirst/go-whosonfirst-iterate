@@ -43,3 +43,8 @@ func (it *NullIterator) Seen() int64 {
 func (it *NullIterator) IsIterator() bool {
 	return false
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *NullIterator) Close() error {
+	return nil
+}

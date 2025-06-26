@@ -18,6 +18,7 @@ func TestFSIterator(t *testing.T) {
 		t.Fatalf("Failed to create FS emitter, %v", err)
 	}
 
+	defer it.Close()
 	count := 0
 
 	for rec, err := range it.Iterate(ctx, ".") {

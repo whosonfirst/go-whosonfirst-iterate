@@ -311,12 +311,12 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 			case <-done_ch:
 				remaining -= 1
 			case err := <-err_ch:
-				if !yield(nil, err){
+				if !yield(nil, err) {
 					return
 				}
 			case rec := <-rec_ch:
-				if !yield(rec, nil){
-				   return
+				if !yield(rec, nil) {
+					return
 				}
 			default:
 				// pass
@@ -334,6 +334,11 @@ func (it concurrentIterator) Seen() int64 {
 // IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 func (it concurrentIterator) IsIterating() bool {
 	return it.iterating.Load()
+}
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it concurrentIterator) Close() error {
+	return it.iterator.Close()
 }
 
 func (it concurrentIterator) shouldYieldRecord(ctx context.Context, rec *Record) (bool, error) {

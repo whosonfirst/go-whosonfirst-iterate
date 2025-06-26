@@ -178,3 +178,8 @@ func (it *DirectoryIterator) Seen() int64 {
 func (it *DirectoryIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *DirectoryIterator) Close() error {
+	return nil
+}

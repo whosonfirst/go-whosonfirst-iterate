@@ -19,6 +19,8 @@ type Iterator interface {
 	Seen() int64
 	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 	IsIterating() bool
+	// Close performs any implementation specific tasks before terminating the iterator.
+	Close() error
 }
 
 // IteratorInitializationFunc is a function defined by individual iterator package and used to create

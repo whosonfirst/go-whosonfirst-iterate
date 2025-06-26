@@ -29,6 +29,8 @@ func TestRepoIterator(t *testing.T) {
 		t.Fatalf("Failed to create new directory source, %v", err)
 	}
 
+	defer it.Close()
+
 	for rec, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {

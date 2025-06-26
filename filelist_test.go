@@ -29,6 +29,8 @@ func TestFileListIterator(t *testing.T) {
 		t.Fatalf("Failed to create new file source, %v", err)
 	}
 
+	defer it.Close()
+
 	for rec, err := range it.Iterate(ctx, abs_path) {
 
 		if err != nil {
@@ -37,7 +39,7 @@ func TestFileListIterator(t *testing.T) {
 		}
 
 		defer rec.Body.Close()
-		
+
 		_, err = io.ReadAll(rec.Body)
 
 		if err != nil {

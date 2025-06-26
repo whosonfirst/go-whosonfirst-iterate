@@ -159,3 +159,8 @@ func (it *FileListIterator) Seen() int64 {
 func (it *FileListIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *FileListIterator) Close() error {
+	return nil
+}

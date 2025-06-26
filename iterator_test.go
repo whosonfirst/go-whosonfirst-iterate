@@ -30,5 +30,11 @@ func TestNewIterator(t *testing.T) {
 		if it.IsIterating() {
 			t.Fatalf("Why is '%s' iterating?", s)
 		}
+
+		err = it.Close()
+
+		if err != nil {
+			t.Fatalf("Failed to close iterator %s, %v", s, err)
+		}
 	}
 }

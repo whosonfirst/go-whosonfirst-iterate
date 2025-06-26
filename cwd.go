@@ -70,3 +70,8 @@ func (it *CwdIterator) Seen() int64 {
 func (it *CwdIterator) IsIterating() bool {
 	return it.iterator.IsIterating()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *CwdIterator) Close() error {
+	return nil
+}

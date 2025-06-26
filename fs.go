@@ -146,3 +146,8 @@ func (it *FSIterator) Seen() int64 {
 func (it *FSIterator) IsIterating() bool {
 	return it.iterating.Load()
 }
+
+// Close performs any implementation specific tasks before terminating the iterator.
+func (it *FSIterator) Close() error {
+	return nil
+}

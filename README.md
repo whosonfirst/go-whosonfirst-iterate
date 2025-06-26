@@ -29,7 +29,8 @@ func main() {
 	ctx := context.Background()
 	
 	iter, _:= iterate.NewIterator(ctx, iterator_uri)
-
+	defer iter.Close()
+	
 	paths := flag.Args()
 	
 	for rec, _ := range iter.Iterate(ctx, paths...) {
@@ -91,6 +92,8 @@ type Iterator interface {
 	Seen() int64
 	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
 	IsIterating() bool
+	// Close performs any implementation specific tasks before terminating the iterator.
+	Close() error	
 }
 ```
 
@@ -354,7 +357,6 @@ func NewCustomIterator(ctx context.Context, uri string) (iterate.Iterator, error
 
 * https://github.com/whosonfirst/go-whosonfirst-iterate-bucket
 * https://github.com/whosonfirst/go-whosonfirst-iterate-git
-* https://github.com/whosonfirst/go-whosonfirst-iterate-github
 * https://github.com/whosonfirst/go-whosonfirst-iterate-reader
 * https://github.com/whosonfirst/go-whosonfirst-iterate-sql
 

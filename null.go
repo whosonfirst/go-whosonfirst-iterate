@@ -6,6 +6,7 @@ import (
 )
 
 func init() {
+
 	ctx := context.Background()
 	err := RegisterIterator(ctx, "null", NewNullIterator)
 

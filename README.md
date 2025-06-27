@@ -1,12 +1,50 @@
 # go-whosonfirst-iterate
 
-Go package for iterating through a set of Who's On First documents
+Go package for iterating through collections  of Who's On First documents.
 
 ## Documentation
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/whosonfirst/go-whosonfirst-iterate.svg)](https://pkg.go.dev/github.com/whosonfirst/go-whosonfirst-iterate)
+[![Go Reference](https://pkg.go.dev/badge/github.com/whosonfirst/go-whosonfirst-iterate.svg)](https://pkg.go.dev/github.com/whosonfirst/go-whosonfirst-iterate/v3)
 
 ## Example
+
+Version 3.x of this package introduce major, backward-incompatible changes from earlier releases. That said, migragting from version 2.x to 3.x should be relatively straightforward as a the _basic_ concepts are still the same but (hopefully) simplified. Where version 2.x relied on defining a custom callback for looping over records version 3.x use Go's [iter.Seq2](https://pkg.go.dev/iter) iterator construct to yield records as they are encountered.
+
+For example:
+
+```
+import (
+	"context"
+	"flag"
+	"log"
+
+	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
+)
+
+func main() {
+
+     	var iterator_uri string
+
+	flag.StringVar(&iterator_uri, "iterator-uri", "repo://". "A registered whosonfirst/go-whosonfirst-iterate/v3.Iterator URI.")
+	ctx := context.Background()
+	
+	iter, _:= iterate.NewIterator(ctx, iterator_uri)
+	defer iter.Close()
+	
+	paths := flag.Args()
+	
+	for rec, _ := range iter.Iterate(ctx, paths...) {
+	    	defer rec.Body.Close()
+		log.Printf("Indexing %s\n", rec.Path)
+	}
+}
+```
+
+_Error handling removed for the sake of brevity._
+
+### Version 2.x (the old way)
+
+This is how you would do the same thing using the older version 2.x code:
 
 ```
 package main
@@ -41,69 +79,138 @@ func main() {
 }
 ```
 
-_Error handling removed for the sake of brevity._
+## Iterators
 
-## Concepts
+Iterators are defined as a standalone packages implementing the `Iterator` interface:
 
-The naming conventions (`iterator` and `emitter` and `publisher`) are not ideal. They may still be changed. Briefly:
+```
+// Iterator defines an interface for iterating through collections  of Who's On First documents.
+type Iterator interface {
+	// Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in one or more URIs.
+	Iterate(context.Context, ...string) iter.Seq2[*Record, error]
+	// Seen() returns the total number of records processed so far.
+	Seen() int64
+	// IsIterating() returns a boolean value indicating whether 'it' is still processing documents.
+	IsIterating() bool
+	// Close performs any implementation specific tasks before terminating the iterator.
+	Close() error	
+}
+```
 
-* An "iterator" is a high-level construct that manages the dispatching and processing of multiple source URIs.
+Then, at the package level, they are "registered" with the `iterate` package so that they can be invoked using a simple declarative URI syntax. For example:
 
-* An "emitter" is the code that walks (or "crawls") a given URI and emits documents to be proccesed by a user-defined callback function. Emitters are defined by the `emitter.Emitter` interface.
+```
+func init() {
+	ctx := context.Background()
+	err := RegisterIterator(ctx, "cwd", NewCwdIterator)
 
-* A "publisher" is a higher-order construct that bundles an internal iterator with its own callback function to republish data derived from an iterator/emitter to an `io.Writer` target.
+	if err != nil {
+		panic(err)
+	}
+}
+```
 
-## URIs and Schemes (for emitters)
+And then:
 
-The following emitters are supported by default:
+```
+it, err := iterate.NewIterator(ctx, "cwd://")
+```
+
+Importantly, `Iterator` implementations that are "registered" are wrapped in a second (internal) `Iterator` implementation that provides for concurrent processing, retries and regular-expression based file inclusion and exclusion rules. These criteria are defined using query parameters appended to the initial iterator URI that are prefixed with an "_" character. For example:
+
+```
+it, err := iterate.NewIterator(ctx, "cwd://?_exclude=.*\.txt$")
+```
+
+The following iterators schemes are supported by default:
 
 ### cwd://
 
-`CwdEmitter` implements the `Emitter` interface for crawling records in the current working directory.
+`CwdIterator` implements the `Iterator` interface for crawling records in the current working directory.
 
 ### directory://
 
-`DirectoryEmitter` implements the `Emitter` interface for crawling records in a directory.
+`DirectoryIterator` implements the `Iterator` interface for crawling records in a directory.
 
 ### featurecollection://
 
-`FeatureCollectionEmitter` implements the `Emitter` interface for crawling features in a GeoJSON FeatureCollection record.
+`FeatureCollectionIterator` implements the `Iterator` interface for crawling features in a GeoJSON FeatureCollection record.
 
 ### file://
 
-`FileEmitter` implements the `Emitter` interface for crawling individual file records.
+`FileIterator` implements the `Iterator` interface for crawling individual file records.
 
 ### filelist://
 
-`FileListEmitter` implements the `Emitter` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
+`FileListIterator` implements the `Iterator` interface for crawling records listed in a "file list" (a plain text newline-delimted list of files).
+
+### fs://
+
+`FSIterator` implements the `Iterator` interface for crawling records listed in a `fs.FS` instance. For example:
+
+```
+import (
+	"context"
+	"flag"
+	"io/fs"	
+	"log"
+	
+	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
+)
+
+func main() {
+
+     	var iterator_uri string
+
+	flag.StringVar(&iterator_uri, "iterator-uri", "fs://". "A registered whosonfirst/go-whosonfirst-iterate/v3.Iterator URI.")
+	ctx := context.Background()
+
+	// Your fs.FS goes here
+	var your_fs fs.FS
+	
+	iter, _:= iterate.NewFSIterator(ctx, iterator_uri, fs)
+
+	for rec, _ := range iter.Iterate(ctx, ".") {
+	    	defer rec.Body.Close()
+		log.Printf("Indexing %s\n", rec.Path)
+	}
+}
+```
+
+Notes:
+
+* The `go-whosonfirst-iterate-fs/v3` implementation does NOT register itself with the `whosonfirst/go-whosonfirst-iterate.RegisterIterator` method and is NOT instantiated using the `whosonfirst/go-whosonfirst-iterate.NewIterator` method since `fs.FS` instances can not be defined as URI constructs.
+* Under the hood the `NewFSIterator` is wrapping a `FSIterator` instance in a `whosonfirst/go-whosonfirst-iterate.concrurrentIterator` instance to provide for throttling, filtering and other common (configurable) operations.
 
 ### geojsonl://
 
-`GeojsonLEmitter` implements the `Emitter` interface for crawling features in a line-separated GeoJSON record.
+`GeojsonLIterator` implements the `Iterator` interface for crawling features in a line-separated GeoJSON record.
 
 ### null://
 
-`NullEmitter` implements the `Emitter` interface for appearing to crawl records but not doing anything.
+`NullIterator` implements the `Iterator` interface for appearing to crawl records but not doing anything.
 
 ### repo://
 
-`RepoEmitter` implements the `Emitter` interface for crawling records in a Who's On First style data directory.
+`RepoIterator` implements the `Iterator` interface for crawling records in a Who's On First style data directory.
+
 
 ## Query parameters
 
-The following query parameters are honoured by all `emitter.Emitter` instances:
+The following query parameters are honoured by all `iterate.Iterator` instances:
 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
 | include | String | No | One or more query filters (described below) to limit documents that will be processed. |
 | exclude | String | No | One or more query filters (described below) for excluding documents from being processed. |
 
-The following query paramters are honoured for `emitter.Emitter` URIs passed to the `iterator.NewIterator` method:
+The following query paramters are honoured for `iterate.Iterator` URIs passed to the `iterator.NewIterator` method:
 
 | Name | Value | Required | Notes
 | --- | --- | --- | --- |
 | _max_procs | Int | No | _To be written_ |
-| _exclude | String (a valid regular expression) | No | _To be written_ |
+| _include | String (a valid regular expression) for paths (uris) to include for processing. | No | _To be written_ |
+| _exclude | String (a valid regular expression) for paths (uris) to exclude from processing. | No | _To be written_ |
 | _exclude_alt | Bool | No | If true do not process "alternate geometry" files. |
 | _retry | Bool | No | A boolean flag signaling that if a URI being walked fails it should be retried. Used in conjunction with the `_max_retries` and `_retry_after` parameters. |
 | _max_retries | Int | No | The maximum number of attempts to walk any given URI. Defaults to "1" and the `_retry` parameter _must_ evaluate to a true value in order to change the default. |
@@ -114,7 +221,7 @@ The following query paramters are honoured for `emitter.Emitter` URIs passed to 
 
 ### QueryFilters
 
-You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `emitter.Emitter` URI, where the value is a string in the format of:
+You can also specify inline queries by appending one or more `include` or `exclude` parameters to a `iterate.Iterator` URI, where the value is a string in the format of:
 
 ```
 {PATH}={REGULAR EXPRESSION}
@@ -146,55 +253,41 @@ go build -mod vendor -o bin/emit cmd/emit/main.go
 
 ### count
 
-Count files in one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
+Count files in one or more whosonfirst/go-whosonfirst-iterate/v3 iterator sources.
 
 ```
-> ./bin/count -h
-Count files in one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
+$> ./bin/count -h
+Count files in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources.
 Usage:
 	 ./bin/count [options] uri(N) uri(N)
 Valid options are:
 
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterate/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
+  -iterator-uri string
+    	A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: cwd://,directory://,featurecollection://,file://,filelist://,geojsonl://,null://,repo:// (default "repo://")
 ```
 
 For example:
 
 ```
-$> ./bin/count \
-	/usr/local/data/sfomuseum-data-architecture/
-
-2021/02/17 14:07:01 time to index paths (1) 87.908997ms
-2021/02/17 14:07:01 Counted 1072 records (1072) in 88.045771ms
-```
-
-Or:
-
-```
-$> ./bin/count \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=terminal&include=properties.mz:is_current=1' \
-	/usr/local/data/sfomuseum-data-architecture/
-	
-2021/02/17 14:09:18 time to index paths (1) 71.06355ms
-2021/02/17 14:09:18 Counted 4 records (4) in 71.184227ms
+$> ./bin/count fixtures
+2025/06/23 08:26:59 INFO Counted records count=37 time=9.216979ms
 ```
 
 ### emit
 
-Publish features from one or more whosonfirst/go-whosonfirst-index/v2/emitter sources.
+Emit records in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources as structured data.
 
 ```
-> ./bin/emit -h
-Publish features from one or more whosonfirst/go-whosonfirst-iterate/emitter sources.
+$> ./bin/emit -h
+Emit records in one or more whosonfirst/go-whosonfirst-iterate/v3.Iterator sources as structured data.
 Usage:
 	 ./bin/emit [options] uri(N) uri(N)
 Valid options are:
 
-  -emitter-uri string
-    	A valid whosonfirst/go-whosonfirst-iterator/emitter URI. Supported emitter URI schemes are: directory://,featurecollection://,file://,filelist://,geojsonl://,repo:// (default "repo://")
   -geojson
     	Emit features as a well-formed GeoJSON FeatureCollection record.
+  -iterator-uri string
+    	A valid whosonfirst/go-whosonfirst-iterate/v3.Iterator URI. Supported iterator URI schemes are: cwd://,directory://,featurecollection://,file://,filelist://,geojsonl://,null://,repo:// (default "repo://")
   -json
     	Emit features as a well-formed JSON array.
   -null
@@ -207,36 +300,68 @@ For example:
 
 ```
 $> ./bin/emit \
-	-emitter-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
+	-iterator-uri 'repo://?include=properties.sfomuseum:placetype=museum' \
 	-geojson \	
-	/usr/local/data/sfomuseum-data-architecture/ \
+	fixtures \
 
 | jq '.features[]["properties"]["wof:id"]'
 
-1729813675
-1477855937
-1360521563
-1360521569
-1360521565
-1360521571
-1159157863
+1360391311
+1360391313
+1360391315
+1360391317
+1360391321
+1360391323
+1360391325
+1360391327
+1360391329
+...and so on
 ```
 
-## "v2"
+## Notes about writing your own `iterate.Iterator` implementation.
 
-Version 2.x.y of this package was released to address a problem with the way version 1.x was passing path names (or URIs) for files being processed: Namely [it wasn't thread-safe](https://github.com/whosonfirst/go-whosonfirst-iterate/issues/5) so it was possible to derive a path (from a context) that was associated with another file. Version 2.x changes the interface for local callback to include the string path (or URI) for the file being processed.
+Under the hood all `iterate.Iterate` instances are wrapped using the (private) `concurrentIterator` implementation. This is the code that implements throttling, file matching and other common tasks. That happens automatically when code calls `iterate.NewIterator` but you do need to make sure that you "register" your custom implementation, for example:
 
-## Related
+```
+package custom
+
+import (
+	"context"
+
+	"github.com/whosonfirst/go-whosonfirst-iterate/v3"
+)
+
+func init() {
+
+	ctx := context.Background()
+	err := iterate.RegisterIterator(ctx, "custom", YourCustomIterator)
+
+	if err != nil {
+		panic(err)
+	}
+}
+
+type CustomIterator struct {
+	iterate.Iterator
+}
+
+func NewCustomIterator(ctx context.Context, uri string) (iterate.Iterator, error) {
+	it := &CustomIterator{}
+	return it, nil
+}
+
+// The rest of the iterate.Iterator interfece goes here...
+```
+
+## Other implementations
 
 * https://github.com/whosonfirst/go-whosonfirst-iterate-bucket
 * https://github.com/whosonfirst/go-whosonfirst-iterate-git
-* https://github.com/whosonfirst/go-whosonfirst-iterate-github
-* https://github.com/whosonfirst/go-whosonfirst-iterate-organization
 * https://github.com/whosonfirst/go-whosonfirst-iterate-reader
-* https://github.com/whosonfirst/go-whosonfirst-iterate-sqlite
-* https://github.com/whosonfirst/go-whosonfirst-iterate-fs
+* https://github.com/whosonfirst/go-whosonfirst-iterate-sql
 
 ## See also
 
 * https://github.com/aaronland/go-json-query
 * https://github.com/aaronland/go-roster
+* https://pkg.go.dev/iter

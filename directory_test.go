@@ -57,7 +57,7 @@ func TestDirectoryIterator(t *testing.T) {
 	}
 
 	seen := it.Seen()
-	expected := int64(41)
+	expected := int64(42)
 
 	if seen != expected {
 		t.Fatalf("Unexpected record count. Got %d but expected %d", seen, expected)

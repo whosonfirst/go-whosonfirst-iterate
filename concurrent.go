@@ -51,7 +51,7 @@ type concurrentIterator struct {
 	with_stats bool
 	// ...
 	stats_interval time.Duration
-	//
+	// ...
 	stats_level slog.Level
 }
 
@@ -201,7 +201,8 @@ func (it *concurrentIterator) showStats(ctx context.Context, t1 time.Time) {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
 
-	slog.Log(ctx, it.stats_level, "Stats",
+	slog.Log(ctx, it.stats_level,
+		"Iterator stats",
 		"elapsed", time.Since(t1),
 		"seen", it.Seen(),
 		"allocated", humanize.Bytes(m.Alloc),
@@ -276,6 +277,9 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 				attempts := 0
 
 				defer func() {
+					logger.Debug("Run garbage collector")
+					runtime.GC()
+
 					logger.Debug("Time to iterate uri", "time", time.Since(t2))
 				}()
 
@@ -330,6 +334,7 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 						if atomic.LoadInt64(&it_counter) > atomic.LoadInt64(&local_counter) {
 							logger.Debug("Iterator counter > local counter, skipping", "path", rec.Path, "counter", atomic.LoadInt64(&it_counter), "local counter", atomic.LoadInt64(&local_counter))
 							atomic.AddInt64(&local_counter, 1)
+							rec.Body.Close()
 							continue
 						}
 
@@ -341,6 +346,7 @@ func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.
 
 						if err != nil {
 							logger.Warn("Failed to determine if record should yield", "path", rec.Path, "error", err)
+							rec.Body.Close()
 							continue
 						}
 

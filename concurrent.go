@@ -17,6 +17,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/whosonfirst/go-whosonfirst-uri"
 )
 
@@ -46,6 +47,12 @@ type concurrentIterator struct {
 	dedupe bool
 	// Lookup table to track records (specifically their relative URI) that have been processed
 	dedupe_map *sync.Map
+	// ...
+	with_stats bool
+	// ...
+	stats_interval time.Duration
+	//
+	stats_level slog.Level
 }
 
 // NewConcurrentIterator() returns a new `Iterator` instance derived from 'iterator_uri' and 'it'. The former is expected
@@ -74,6 +81,10 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 	retry := false
 	max_attempts := 1
 	retry_after := 10 // seconds
+
+	with_stats := true
+	stats_interval := 1 * time.Minute
+	stats_level := slog.LevelInfo
 
 	if q.Has("_max_procs") {
 
@@ -123,12 +134,15 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 	}
 
 	i := &concurrentIterator{
-		iterator:     it,
-		seen:         int64(0),
-		iterating:    new(atomic.Bool),
-		max_procs:    max_procs,
-		max_attempts: max_attempts,
-		retry_after:  retry_after,
+		iterator:       it,
+		seen:           int64(0),
+		iterating:      new(atomic.Bool),
+		max_procs:      max_procs,
+		max_attempts:   max_attempts,
+		retry_after:    retry_after,
+		with_stats:     with_stats,
+		stats_interval: stats_interval,
+		stats_level:    stats_level,
 	}
 
 	if q.Has("_include") {
@@ -182,12 +196,51 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 	return i, nil
 }
 
+func (it *concurrentIterator) showStats(ctx context.Context, t1 time.Time) {
+
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	slog.Log(ctx, it.stats_level, "Stats",
+		"elapsed", time.Since(t1),
+		"seen", it.Seen(),
+		"allocated", humanize.Bytes(m.Alloc),
+		"total allocated", humanize.Bytes(m.TotalAlloc),
+		"sys", humanize.Bytes(m.Sys),
+		"numgc", m.NumGC,
+	)
+}
+
 // Iterate will return an `iter.Seq2[*Record, error]` for each record encountered in 'uris'.
 func (it *concurrentIterator) Iterate(ctx context.Context, uris ...string) iter.Seq2[*Record, error] {
 
 	return func(yield func(rec *Record, err error) bool) {
 
 		t1 := time.Now()
+
+		if it.with_stats {
+
+			ticker := time.NewTicker(it.stats_interval)
+			ticker_done := make(chan bool)
+
+			defer func() {
+				ticker.Stop()
+				ticker_done <- true
+			}()
+
+			go func() {
+
+				for {
+					select {
+					case <-ticker_done:
+						it.showStats(ctx, t1)
+						return
+					case <-ticker.C:
+						it.showStats(ctx, t1)
+					}
+				}
+			}()
+		}
 
 		defer func() {
 			slog.Debug("Time to process paths", "count", len(uris), "time", time.Since(t1))

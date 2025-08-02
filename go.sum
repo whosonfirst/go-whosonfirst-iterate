@@ -2,6 +2,8 @@ github.com/aaronland/go-json-query v0.1.6 h1:i4HHIFeZr6jguE/TFWYSJmDZDH2PyrI5MH1
 github.com/aaronland/go-json-query v0.1.6/go.mod h1:acIgF0MbnW5fp/oGaVJAFs692X8ZQTsRoDlklXV3w9Q=
 github.com/aaronland/go-roster v1.0.0 h1:FRDGrTqsYySKjWnAhbBGXyeGlI/o5/t9FZYCbUmyQtI=
 github.com/aaronland/go-roster v1.0.0/go.mod h1:KIsYZgrJlAsyb9LsXSCvlqvbcCBVjCSqcQiZx42i9ro=
+github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
+github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/sfomuseum/go-flags v0.11.0 h1:HmMm5DgLxgz8iaNsvJ79dyRXjuAyX/fruqkBeHmopL0=
 github.com/sfomuseum/go-flags v0.11.0/go.mod h1:cUTByyudaM9d+iHwxsEpyYHemWVOGL/bqTRPIvydiC8=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=

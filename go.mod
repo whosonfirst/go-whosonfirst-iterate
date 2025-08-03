@@ -5,6 +5,7 @@ go 1.24
 require (
 	github.com/aaronland/go-json-query v0.1.6
 	github.com/aaronland/go-roster v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/sfomuseum/go-flags v0.11.0
 	github.com/whosonfirst/go-ioutil v1.0.2
 	github.com/whosonfirst/go-whosonfirst-uri v1.3.0

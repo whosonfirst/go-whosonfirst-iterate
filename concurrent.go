@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -47,11 +48,11 @@ type concurrentIterator struct {
 	dedupe bool
 	// Lookup table to track records (specifically their relative URI) that have been processed
 	dedupe_map *sync.Map
-	// ...
+	// Boolean flag indicating whether stats should be logged. Default is true.
 	with_stats bool
-	// ...
+	// The inteval at which stats are logged. Default is 60 seconds.
 	stats_interval time.Duration
-	// ...
+	// The level at which stats are logged. Default is INFO.
 	stats_level slog.Level
 }
 
@@ -65,6 +66,9 @@ type concurrentIterator struct {
 // * `?_retry=` A boolean value indicating whether failed iterators should be retried. (Default is false.)
 // * `?_max_attempts=` The number of times to retry a failed iterator. (Default is 1.)
 // * `?_retry_after=` The number of seconds to wait before retrying a failed iterator. (Default is 10.)
+// * `?_with_stats=` Boolean flag indicating whether stats should be logged. Default is true.
+// * `?_stats_interval=` The number of seconds between stats logging events. Default is 60.
+// * `?_stas_level=` The (slog/log) level at which stats are logged. Default is INFO.
 // These parameters will be used to wrap and perform additional checks when iterating through documents using 'it'.
 func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator) (Iterator, error) {
 
@@ -190,7 +194,46 @@ func NewConcurrentIterator(ctx context.Context, iterator_uri string, it Iterator
 			i.dedupe = true
 			i.dedupe_map = new(sync.Map)
 		}
+	}
 
+	if q.Has("_with_stats") {
+
+		v, err := strconv.ParseBool(q.Get("_with_stats"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_with_stats' parameter, %w", err)
+		}
+
+		i.with_stats = v
+	}
+
+	if q.Has("_stats_interval") {
+
+		v, err := strconv.Atoi(q.Get("_stats_interval"))
+
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse '_stats_interval' parameter, %w", err)
+		}
+
+		i.stats_interval = time.Duration(v) * time.Second
+	}
+
+	if q.Has("_stats_level") {
+
+		switch strings.ToUpper(q.Get("_stats_level")) {
+		case "DEBUG":
+			i.stats_level = slog.LevelDebug
+		case "INFO":
+			i.stats_level = slog.LevelInfo
+		case "WARN":
+			i.stats_level = slog.LevelWarn
+		case "ERROR":
+			i.stats_level = slog.LevelError
+		default:
+			return nil, fmt.Errorf("Invalid or unsupport log level for stats")
+		}
+
+		slog.Info("BUELLER", "level", i.stats_level)
 	}
 
 	return i, nil
